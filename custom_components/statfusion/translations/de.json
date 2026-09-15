@@ -1,0 +1,14 @@
+{
+  "title": "StatFusion",
+  "config": {
+    "step": {
+      "user": {
+        "title": "StatFusion einrichten",
+        "description": "StatFusion ist bereit, Langzeitstatistiken zu analysieren. Diese erste Version verändert keine Statistiken und keine Recorder-Daten."
+      }
+    },
+    "abort": {
+      "already_configured": "StatFusion ist bereits eingerichtet."
+    }
+  }
+}
