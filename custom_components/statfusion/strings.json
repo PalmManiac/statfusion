@@ -1,0 +1,14 @@
+{
+  "title": "StatFusion",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up StatFusion",
+        "description": "StatFusion is ready to analyze long-term statistics. This initial version does not modify any statistics or recorder data."
+      }
+    },
+    "abort": {
+      "already_configured": "StatFusion is already configured."
+    }
+  }
+}
