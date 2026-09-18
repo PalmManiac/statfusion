@@ -1,0 +1,18 @@
+analyze:
+  name: Analyze a statistics merge
+  description: >-
+    Analyze two long-term statistics as a possible future merge. This action is
+    read-only and never modifies Home Assistant recorder data.
+  fields:
+    source_statistic_id:
+      name: Source statistic ID
+      description: The older long-term statistic, for example sensor.old_energy.
+      required: true
+      selector:
+        text:
+    target_statistic_id:
+      name: Target statistic ID
+      description: The newer long-term statistic, for example sensor.new_energy.
+      required: true
+      selector:
+        text:

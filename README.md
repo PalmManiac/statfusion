@@ -28,6 +28,23 @@ a Home Assistant development instance, then restart Home Assistant. Add
 The current scaffold creates no entities, has no background polling, and makes
 no recorder or database changes.
 
+## Analyze a possible merge
+
+After adding the integration, use the `statfusion.analyze` action in Home
+Assistant's Developer Tools. Supply the older and newer statistic IDs:
+
+```yaml
+action: statfusion.analyze
+data:
+  source_statistic_id: sensor.old_energy
+  target_statistic_id: sensor.new_energy
+```
+
+The action returns the source and target metadata, their hourly time ranges,
+and findings such as an overlap, a gap, a statistic-type mismatch, or a unit
+conversion requirement. A `ready_for_review` result is only an analysis
+result; it never authorizes or performs a recorder change.
+
 ## Project principles
 
 - Keep all statistics operations database-backend independent.
@@ -45,4 +62,3 @@ Actions. Python style checks are configured in `pyproject.toml`.
 ## License
 
 StatFusion is licensed under the [Apache License 2.0](LICENSE).
-
