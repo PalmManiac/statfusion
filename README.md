@@ -1,3 +1,11 @@
+![GitHub Release](https://img.shields.io/github/v/release/PalmManiac/statfusion?style=for-the-badge)
+![Maintained](https://img.shields.io/badge/Maintained-Yes-green?style=for-the-badge)
+![GitHub Repo Size](https://img.shields.io/github/repo-size/PalmManiac/statfusion?style=for-the-badge)
+[![Active installs](https://badge.t-haber.de/badge/statfusion?kill_cache=1)](https://github.com/PalmManiac/statfusion/)
+![GitHub Stars](https://img.shields.io/github/stars/PalmManiac/statfusion?style=for-the-badge)
+![License](https://img.shields.io/github/license/PalmManiac/statfusion?style=for-the-badge)
+![HACS](https://img.shields.io/badge/HACS-Default-blue?style=for-the-badge)
+
 # StatFusion
 
 StatFusion is a Home Assistant tool for safely analyzing how long-term
