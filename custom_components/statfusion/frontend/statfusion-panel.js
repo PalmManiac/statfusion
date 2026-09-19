@@ -15,14 +15,15 @@ class StatFusionPanel extends HTMLElement {
     this._result = null;
     this._error = "";
     this._loading = false;
+    this._statisticsLoading = false;
   }
 
   set hass(value) {
     this._hass = value;
-    if (!this._statistics.length) {
+    if (!this._statistics.length && !this._statisticsLoading) {
       this._loadStatistics();
     }
-    this._render();
+    if (!this.shadowRoot.innerHTML) this._render();
   }
 
   get hass() {
@@ -31,6 +32,7 @@ class StatFusionPanel extends HTMLElement {
 
   async _loadStatistics() {
     if (!this._hass || !this._hass.connection || !this._hass.connection.sendMessagePromise) return;
+    this._statisticsLoading = true;
     try {
       const result = await this._hass.connection.sendMessagePromise({
         type: "recorder/list_statistic_ids",
@@ -41,6 +43,8 @@ class StatFusionPanel extends HTMLElement {
         .sort((left, right) => left.localeCompare(right));
     } catch (error) {
       this._error = "Die verfügbaren Statistiken konnten nicht geladen werden.";
+    } finally {
+      this._statisticsLoading = false;
     }
     this._render();
   }
@@ -174,6 +178,12 @@ class StatFusionPanel extends HTMLElement {
         ${this._resultTemplate()}
       </main>`;
     this.shadowRoot.querySelector("#analyze").addEventListener("click", () => this._analyze());
+    this.shadowRoot.querySelector("#source").addEventListener("input", (event) => {
+      this._source = event.target.value;
+    });
+    this.shadowRoot.querySelector("#target").addEventListener("input", (event) => {
+      this._target = event.target.value;
+    });
   }
 }
 
