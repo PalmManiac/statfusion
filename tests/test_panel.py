@@ -15,6 +15,8 @@ def test_sidebar_panel_is_packaged_with_read_only_analysis_ui() -> None:
     assert 'service: "analyze"' in panel
     assert "return_response: true" in panel
     assert "Die Prüfung verändert keine Daten." in panel
+    assert 'querySelector("#source").addEventListener("input"' in panel
+    assert 'querySelector("#target").addEventListener("input"' in panel
 
 
 def test_sidebar_panel_is_admin_only_and_served_by_the_integration() -> None:
