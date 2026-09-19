@@ -36,10 +36,19 @@ a Home Assistant development instance, then restart Home Assistant. Add
 The current scaffold creates no entities, has no background polling, and makes
 no recorder or database changes.
 
+## Sidebar analysis
+
+After the integration is added, **StatFusion** appears as an admin-only entry
+in the Home Assistant sidebar. The page provides searchable source and target
+statistic selection and presents the read-only result as a compact
+compatibility report. It follows the active Home Assistant theme and does not
+offer any action that changes statistics.
+
 ## Analyze a possible merge
 
-After adding the integration, use the `statfusion.analyze` action in Home
-Assistant's Developer Tools. Supply the older and newer statistic IDs:
+The sidebar is the preferred way to run an analysis. The same read-only
+`statfusion.analyze` action also remains available in Home Assistant's
+Developer Tools. Supply the older and newer statistic IDs:
 
 ```yaml
 action: statfusion.analyze

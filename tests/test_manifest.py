@@ -14,6 +14,7 @@ def test_manifest_has_required_custom_integration_metadata() -> None:
     assert manifest["name"] == "StatFusion"
     assert manifest["version"] == "0.1.0"
     assert manifest["config_flow"] is True
+    assert manifest["dependencies"] == ["frontend", "recorder"]
     assert manifest["integration_type"] == "service"
     assert manifest["documentation"].startswith("https://")
     assert manifest["issue_tracker"].endswith("/issues")
