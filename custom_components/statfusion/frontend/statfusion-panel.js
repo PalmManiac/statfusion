@@ -31,6 +31,8 @@ class StatFusionPanel extends HTMLElement {
     this._error = "";
     this._loading = false;
     this._statisticsLoading = false;
+    this._pickerRole = "";
+    this._pickerQuery = "";
   }
 
   set hass(value) {
@@ -167,11 +169,12 @@ class StatFusionPanel extends HTMLElement {
         .workspace,.result { background:var(--card-background-color); border:1px solid var(--divider-color); border-radius:12px; box-shadow:var(--ha-card-box-shadow, none); padding:22px; }
         .workspace-title { display:flex; gap:12px; align-items:center; justify-content:space-between; margin-bottom:18px; } .eyebrow,.card-label { color:var(--secondary-text-color); font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
         .selection { display:grid; grid-template-columns:1fr 42px 1fr; gap:12px; align-items:end; }
-        label { color:var(--secondary-text-color); display:grid; font-size:14px; font-weight:600; gap:7px; } input { box-sizing:border-box; background:var(--input-fill-color, var(--secondary-background-color)); border:1px solid var(--input-idle-line-color, var(--divider-color)); border-radius:8px; color:var(--primary-text-color); font:inherit; padding:12px; width:100%; } input:focus { border-color:var(--primary-color); outline:2px solid color-mix(in srgb, var(--primary-color) 25%, transparent); } .arrow { color:var(--primary-color); font-size:25px; line-height:45px; text-align:center; }
+        label { color:var(--secondary-text-color); display:grid; font-size:14px; font-weight:600; gap:7px; } input { box-sizing:border-box; background:var(--input-fill-color, var(--secondary-background-color)); border:1px solid var(--input-idle-line-color, var(--divider-color)); border-radius:8px; color:var(--primary-text-color); font:inherit; padding:12px; width:100%; } input:focus { border-color:var(--primary-color); outline:2px solid color-mix(in srgb, var(--primary-color) 25%, transparent); }.input-row { display:flex; gap:8px; }.input-row input { min-width:0; }.picker-trigger { background:var(--secondary-background-color); border:1px solid var(--divider-color); border-radius:8px; color:var(--primary-text-color); cursor:pointer; font:inherit; font-weight:700; padding:0 12px; white-space:nowrap; }.picker-trigger:hover { border-color:#0878d1; color:#0878d1; }.arrow { color:var(--primary-color); font-size:25px; line-height:45px; text-align:center; }
         .actions { display:flex; align-items:center; gap:14px; margin-top:18px; } #analyze { appearance:none; background:#0878d1; border:0; border-radius:8px; box-shadow:0 1px 2px rgb(0 0 0 / 18%); color:#fff; cursor:pointer; font:inherit; font-weight:700; padding:11px 17px; } #analyze:hover { background:#0669b6; } #analyze:focus-visible { outline:3px solid color-mix(in srgb, #0878d1 35%, transparent); outline-offset:2px; } #analyze:disabled { background:#6c8cab; cursor:wait; opacity:1; } .read-only { color:var(--secondary-text-color); font-size:13px; }
         .error { background:var(--error-color); border-radius:8px; color:var(--text-primary-color, white); margin-top:16px; padding:11px 13px; } .result { border-top:3px solid var(--primary-color); margin-top:22px; } .result.blocked { border-top-color:var(--error-color); } .result-heading { align-items:center; display:flex; justify-content:space-between; } .result.ready .chip { color:var(--success-color, #2e7d32); } .result p { color:var(--secondary-text-color); margin-top:8px; }
         .stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:20px; }.stat-card { background:var(--secondary-background-color); border:1px solid var(--divider-color); border-radius:9px; border-top:3px solid var(--primary-color); padding:16px; }.stat-card.target { border-top-color:var(--accent-color, #00a7d8); }.stat-card strong { display:block; font-family:var(--code-font-family, monospace); font-size:15px; margin-top:6px; overflow-wrap:anywhere; } dl { display:grid; gap:9px; margin:16px 0 0; } dl div { display:flex; gap:12px; justify-content:space-between; } dt { color:var(--secondary-text-color); } dd { margin:0; text-align:right; }
         .findings { display:grid; gap:8px; list-style:none; margin:20px 0 0; padding:0; }.finding { align-items:flex-start; background:var(--secondary-background-color); border-radius:8px; display:flex; gap:10px; padding:11px; }.finding span { align-items:center; background:var(--primary-color); border-radius:50%; color:white; display:inline-flex; flex:0 0 19px; font-size:12px; font-weight:700; height:19px; justify-content:center; }.finding.error span { background:var(--error-color); }.finding.warning span { background:var(--warning-color, #f6a700); }
+        .picker-backdrop { align-items:center; background:rgb(0 0 0 / 35%); display:flex; inset:0; justify-content:center; padding:20px; position:fixed; z-index:10; }.picker { background:var(--card-background-color); border:1px solid var(--divider-color); border-radius:12px; box-shadow:0 16px 40px rgb(0 0 0 / 28%); max-width:660px; padding:22px; width:100%; }.picker-heading { align-items:flex-start; display:flex; justify-content:space-between; margin-bottom:17px; }.close-picker { background:transparent; border:0; color:var(--secondary-text-color); cursor:pointer; font-size:28px; line-height:28px; padding:0 5px; }.picker-count { color:var(--secondary-text-color); font-size:13px; margin:11px 0; }.picker-options { border:1px solid var(--divider-color); border-radius:8px; max-height:420px; overflow:auto; }.picker-option { background:transparent; border:0; border-bottom:1px solid var(--divider-color); color:var(--primary-text-color); cursor:pointer; display:flex; font-family:var(--code-font-family, monospace); font-size:14px; font-weight:400; justify-content:space-between; padding:13px; text-align:left; width:100%; }.picker-option:hover { background:var(--secondary-background-color); }.picker-option span:last-child { color:#0878d1; font-family:var(--primary-font-family, sans-serif); font-size:12px; font-weight:700; }.picker-option:last-child { border-bottom:0; }.empty { color:var(--secondary-text-color); margin:0; padding:18px; }
         @media (max-width:680px) { main { padding:22px 16px 32px; } header,.selection { display:block; } header .chip { display:inline-block; margin-top:14px; } .arrow { display:none; } label + .arrow + label { margin-top:14px; }.stat-grid { grid-template-columns:1fr; } .workspace,.result { padding:17px; } }
       </style>
       <main>
@@ -182,16 +185,17 @@ class StatFusionPanel extends HTMLElement {
         <section class="workspace">
           <div class="workspace-title"><div><span class="eyebrow">Schritt 1</span><h2>Statistiken auswählen</h2></div></div>
           <div class="selection">
-            <label>Quelle<input id="source" list="statistics" value="${escapeHtml(this._source)}" placeholder="sensor.alte_energie"></label>
+            <label>Quelle<span class="input-row"><input id="source" list="statistics" value="${escapeHtml(this._source)}" placeholder="sensor.alte_energie"><button class="picker-trigger" type="button" data-picker-role="source">Liste</button></span></label>
             <div class="arrow">→</div>
-            <label>Ziel<input id="target" list="statistics" value="${escapeHtml(this._target)}" placeholder="sensor.neue_energie"></label>
+            <label>Ziel<span class="input-row"><input id="target" list="statistics" value="${escapeHtml(this._target)}" placeholder="sensor.neue_energie"><button class="picker-trigger" type="button" data-picker-role="target">Liste</button></span></label>
           </div>
           <datalist id="statistics">${options}</datalist>
           <div class="actions"><button id="analyze" ${this._loading ? "disabled" : ""}>${this._loading ? "Prüfung läuft…" : "Kompatibilität prüfen"}</button><span class="read-only">Die Prüfung verändert keine Daten.</span></div>
           ${this._error ? `<div class="error">${this._error}</div>` : ""}
         </section>
         ${this._resultTemplate()}
-      </main>`;
+      </main>
+      ${this._pickerTemplate()}`;
     this.shadowRoot.querySelector("#analyze").addEventListener("click", () => this._analyze());
     this.shadowRoot.querySelector("#source").addEventListener("input", (event) => {
       this._source = event.target.value;
@@ -199,6 +203,74 @@ class StatFusionPanel extends HTMLElement {
     this.shadowRoot.querySelector("#target").addEventListener("input", (event) => {
       this._target = event.target.value;
     });
+    this.shadowRoot.querySelectorAll(".picker-trigger").forEach((trigger) => {
+      trigger.addEventListener("click", () => this._openPicker(trigger.dataset.pickerRole));
+    });
+    const search = this.shadowRoot.querySelector("#statistic-search");
+    if (search) {
+      search.addEventListener("input", (event) => {
+        this._pickerQuery = event.target.value;
+        this._render();
+        const nextSearch = this.shadowRoot.querySelector("#statistic-search");
+        nextSearch.focus();
+        nextSearch.setSelectionRange(this._pickerQuery.length, this._pickerQuery.length);
+      });
+    }
+    this.shadowRoot.querySelectorAll(".picker-option").forEach((option) => {
+      option.addEventListener("click", () => this._selectStatistic(option.dataset.statisticId));
+    });
+    const closePicker = this.shadowRoot.querySelector("#close-picker");
+    if (closePicker) closePicker.addEventListener("click", () => this._closePicker());
+    const backdrop = this.shadowRoot.querySelector("#picker-backdrop");
+    if (backdrop) {
+      backdrop.addEventListener("click", (event) => {
+        if (event.target === backdrop) this._closePicker();
+      });
+    }
+  }
+
+  _openPicker(role) {
+    this._pickerRole = role;
+    this._pickerQuery = "";
+    this._render();
+    this.shadowRoot.querySelector("#statistic-search").focus();
+  }
+
+  _closePicker() {
+    this._pickerRole = "";
+    this._pickerQuery = "";
+    this._render();
+  }
+
+  _selectStatistic(statisticId) {
+    if (this._pickerRole === "source") this._source = statisticId;
+    if (this._pickerRole === "target") this._target = statisticId;
+    this._closePicker();
+  }
+
+  _pickerTemplate() {
+    if (!this._pickerRole) return "";
+    const title = this._pickerRole === "source" ? "Quellstatistik auswählen" : "Zielstatistik auswählen";
+    const query = this._pickerQuery.toLocaleLowerCase();
+    const matches = this._statistics
+      .filter((statisticId) => statisticId.toLocaleLowerCase().includes(query))
+      .slice(0, 100);
+    const options = matches.map((statisticId) => `
+      <button class="picker-option" type="button" data-statistic-id="${escapeHtml(statisticId)}">
+        <span>${escapeHtml(statisticId)}</span><span>Auswählen</span>
+      </button>`).join("");
+    const detail = this._statistics.length === 0
+      ? "Statistiken werden geladen oder stehen noch nicht zur Verfügung."
+      : `${this._statistics.length} Statistiken verfügbar${matches.length === 100 ? " · erste 100 Treffer" : ""}`;
+    return `
+      <div class="picker-backdrop" id="picker-backdrop">
+        <section class="picker" role="dialog" aria-modal="true" aria-label="${title}">
+          <div class="picker-heading"><div><span class="eyebrow">Auswahl</span><h2>${title}</h2></div><button class="close-picker" id="close-picker" type="button" aria-label="Auswahl schließen">×</button></div>
+          <input id="statistic-search" value="${escapeHtml(this._pickerQuery)}" placeholder="Statistik suchen …" autocomplete="off">
+          <p class="picker-count">${detail}</p>
+          <div class="picker-options">${options || '<p class="empty">Keine passende Statistik gefunden.</p>'}</div>
+        </section>
+      </div>`;
   }
 }
 
