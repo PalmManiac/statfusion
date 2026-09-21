@@ -20,6 +20,10 @@ def test_sidebar_panel_is_packaged_with_read_only_analysis_ui() -> None:
     assert "#analyze { appearance:none; background:#0878d1;" in panel
     assert 'querySelector("#source").addEventListener("input"' in panel
     assert 'querySelector("#target").addEventListener("input"' in panel
+    assert 'data-picker-role="source"' in panel
+    assert 'data-picker-role="target"' in panel
+    assert 'id="statistic-search"' in panel
+    assert "Statistik suchen" in panel
 
 
 def test_sidebar_panel_is_admin_only_and_served_by_the_integration() -> None:
