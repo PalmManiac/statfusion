@@ -5,6 +5,21 @@ const escapeHtml = (value) => String(value == null ? "" : value).replace(/[&<>"]
   "\"": "&quot;",
 })[character]);
 
+const FINDING_MESSAGES = {
+  same_statistic_id: "Quelle und Ziel müssen unterschiedliche Statistiken sein.",
+  source_statistics_missing: "Die Quellstatistik enthält keine stündlichen Langzeitstatistiken.",
+  target_statistics_missing: "Die Zielstatistik enthält keine stündlichen Langzeitstatistiken.",
+  source_statistic_type_unsupported: "Die Quellstatistik enthält weder Summen- noch Mittelwertdaten.",
+  target_statistic_type_unsupported: "Die Zielstatistik enthält weder Summen- noch Mittelwertdaten.",
+  statistic_type_mismatch: "Quelle und Ziel verwenden unterschiedliche Datenformen und können nicht sicher zusammengeführt werden.",
+  unit_conversion_required: "Quelle und Ziel verwenden unterschiedliche, aber umrechenbare Einheiten. Eine spätere Übernahme müsste die Umrechnung gesondert prüfen.",
+  unit_mismatch: "Quelle und Ziel verwenden nicht passende oder unbekannte Einheiten.",
+  energy_flow_mismatch: "Quelle und Ziel scheinen entgegengesetzte Energieflüsse zu beschreiben. Prüfe ihre Bedeutung vor einer späteren Übernahme.",
+  time_range_overlap: "Quelle und Ziel enthalten überlappende Zeiträume in der Langzeitstatistik.",
+  time_range_gap: "Zwischen Quelle und Ziel besteht eine Zeitlücke. Prüfe die Lücke vor einer späteren Übernahme.",
+  time_range_contiguous: "Die Quelle endet unmittelbar vor Beginn des Ziels.",
+};
+
 class StatFusionPanel extends HTMLElement {
   constructor() {
     super();
@@ -121,7 +136,7 @@ class StatFusionPanel extends HTMLElement {
     const findings = (this._result.findings || []).map((finding) => `
       <li class="finding ${finding.severity}">
         <span>${finding.severity === "error" ? "!" : finding.severity === "warning" ? "!" : "i"}</span>
-        ${escapeHtml(finding.message)}
+        ${escapeHtml(FINDING_MESSAGES[finding.code] || finding.message)}
       </li>`).join("");
     return `
       <section class="result ${blocked ? "blocked" : "ready"}">
@@ -129,7 +144,7 @@ class StatFusionPanel extends HTMLElement {
           <div><span class="eyebrow">Prüfung</span><h2>${status}</h2></div>
           <span class="chip">${this._result.analysis_only ? "Keine Änderungen" : ""}</span>
         </div>
-        <p>${this._result.summary || "Die Analyse ist abgeschlossen."}</p>
+        <p>${blocked ? "Die ausgewählten Statistiken sind technisch nicht kompatibel. Es wurde kein Übernahmeplan erstellt und keine Recorder-Daten wurden verändert." : "Die ausgewählten Statistiken können als möglicher Kandidat für eine spätere Übernahme geprüft werden. Es wurden keine Recorder-Daten verändert."}</p>
         <div class="stat-grid">
           ${this._statisticCard("Quelle", this._result.source, "source")}
           ${this._statisticCard("Ziel", this._result.target, "target")}
