@@ -12,6 +12,11 @@ from .models import (
     StatisticSnapshot,
 )
 
+_ENERGY_FLOW_KEYWORDS = {
+    "export": ("abgabe", "einspeis", "export", "feed_in", "feedin"),
+    "import": ("bezug", "import", "grid_import"),
+}
+
 
 def analyze_merge(
     source: StatisticSnapshot, target: StatisticSnapshot
@@ -40,6 +45,7 @@ def analyze_merge(
     if source.first and target.first:
         _check_shape_match(source, target, findings)
         _check_units(source, target, findings)
+        _check_energy_flow(source, target, findings)
         _check_time_range(source, target, findings)
 
     decision = (
@@ -122,6 +128,41 @@ def _check_units(
             "Source and target use incompatible or unknown units.",
         )
     )
+
+
+def _check_energy_flow(
+    source: StatisticSnapshot,
+    target: StatisticSnapshot,
+    findings: list[AnalysisFinding],
+) -> None:
+    """Warn when statistic IDs clearly describe opposing energy flows.
+
+    Entity names are not authoritative metadata, so this stays a warning. It
+    prevents an otherwise technically compatible comparison from looking like
+    an unqualified future merge candidate.
+    """
+    source_flow = _energy_flow_for(source.statistic_id)
+    target_flow = _energy_flow_for(target.statistic_id)
+    if source_flow is None or target_flow is None or source_flow == target_flow:
+        return
+
+    findings.append(
+        AnalysisFinding(
+            "energy_flow_mismatch",
+            FindingSeverity.WARNING,
+            "Source and target appear to describe opposing energy flows. Review "
+            "their meaning before any future merge.",
+        )
+    )
+
+
+def _energy_flow_for(statistic_id: str) -> str | None:
+    """Infer only unambiguous import/export hints from a statistic ID."""
+    normalized = statistic_id.lower()
+    for flow, keywords in _ENERGY_FLOW_KEYWORDS.items():
+        if any(keyword in normalized for keyword in keywords):
+            return flow
+    return None
 
 
 def _check_time_range(

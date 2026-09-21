@@ -15,6 +15,8 @@ def test_sidebar_panel_is_packaged_with_read_only_analysis_ui() -> None:
     assert 'service: "analyze"' in panel
     assert "return_response: true" in panel
     assert "Die Prüfung verändert keine Daten." in panel
+    assert "energy_flow_mismatch" in panel
+    assert "Zwischen Quelle und Ziel besteht eine Zeitlücke." in panel
     assert "#analyze { appearance:none; background:#0878d1;" in panel
     assert 'querySelector("#source").addEventListener("input"' in panel
     assert 'querySelector("#target").addEventListener("input"' in panel

@@ -104,3 +104,28 @@ def test_gaps_are_reported_for_review() -> None:
 
     assert analysis.decision is AnalysisDecision.READY_FOR_REVIEW
     assert "time_range_gap" in _finding_codes(analysis)
+
+
+def test_opposing_energy_flows_need_semantic_review() -> None:
+    source = _snapshot("sensor.stromzahler_abgabe")
+    target = _snapshot(
+        "sensor.shelly_energie_bezug_kwh",
+        first=source.last + timedelta(hours=1),
+        last=source.last + timedelta(hours=24),
+    )
+
+    analysis = analyze_merge(source, target)
+
+    assert analysis.decision is AnalysisDecision.READY_FOR_REVIEW
+    assert "energy_flow_mismatch" in _finding_codes(analysis)
+
+
+def test_matching_energy_flows_do_not_create_a_semantic_warning() -> None:
+    source = _snapshot("sensor.stromzahler_bezug")
+    target = _snapshot(
+        "sensor.shelly_energie_bezug_kwh",
+        first=source.last + timedelta(hours=1),
+        last=source.last + timedelta(hours=24),
+    )
+
+    assert "energy_flow_mismatch" not in _finding_codes(analyze_merge(source, target))
