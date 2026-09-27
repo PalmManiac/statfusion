@@ -137,6 +137,45 @@ class StatFusionPanel extends HTMLElement {
       </article>`;
   }
 
+  _formatDuration(milliseconds) {
+    const hours = Math.max(0, Math.round(milliseconds / (60 * 60 * 1000)));
+    if (hours < 24) return `${hours} Stunden`;
+    const days = Math.round(hours / 24);
+    return `${days} ${days === 1 ? "Tag" : "Tage"}`;
+  }
+
+  _timelineTemplate() {
+    const source = this._result.source;
+    const target = this._result.target;
+    if (!source || !target || !source.last || !target.first) return "";
+
+    const sourceEnd = new Date(source.last);
+    const targetStart = new Date(target.first);
+    if (Number.isNaN(sourceEnd.valueOf()) || Number.isNaN(targetStart.valueOf())) return "";
+
+    const difference = targetStart.valueOf() - sourceEnd.valueOf();
+    const relation = difference < 0 ? "overlap" : difference > 60 * 60 * 1000 ? "gap" : "contiguous";
+    const relationLabel = relation === "overlap" ? "Überlappung" : relation === "gap" ? "Zeitlücke" : "Direkter Übergang";
+    const relationDescription = relation === "overlap"
+      ? `Quelle und Ziel überlappen sich um ${this._formatDuration(Math.abs(difference))}.`
+      : relation === "gap"
+        ? `Zwischen Quelle und Ziel liegt eine Zeitlücke von ${this._formatDuration(difference)}.`
+        : "Quelle und Ziel schließen zeitlich direkt aneinander an.";
+
+    return `
+      <section class="timeline ${relation}" aria-label="Zeitlicher Übergang">
+        <div class="timeline-heading"><span class="eyebrow">Zeitraum</span><strong>Zeitlicher Übergang</strong></div>
+        <div class="timeline-track" aria-hidden="true">
+          <div class="timeline-segment source">Quelle</div><div class="timeline-connector"></div><div class="timeline-segment target">Ziel</div>
+        </div>
+        <div class="timeline-details">
+          <div><span>Quelle endet</span><strong>${escapeHtml(this._formatDate(source.last))}</strong></div>
+          <div class="timeline-relation"><span>${relationLabel}</span><strong>${escapeHtml(relationDescription)}</strong></div>
+          <div><span>Ziel beginnt</span><strong>${escapeHtml(this._formatDate(target.first))}</strong></div>
+        </div>
+      </section>`;
+  }
+
   _resultTemplate() {
     if (!this._result) return "";
     const blocked = this._result.decision === "blocked";
@@ -157,6 +196,7 @@ class StatFusionPanel extends HTMLElement {
           ${this._statisticCard("Quelle", this._result.source, "source")}
           ${this._statisticCard("Ziel", this._result.target, "target")}
         </div>
+        ${this._timelineTemplate()}
         <ul class="findings">${findings}</ul>
         ${this._reviewPlanTemplate(blocked)}
       </section>`;
@@ -208,10 +248,11 @@ class StatFusionPanel extends HTMLElement {
         .actions { display:flex; align-items:center; gap:14px; margin-top:18px; } #analyze { appearance:none; background:#0878d1; border:0; border-radius:8px; box-shadow:0 1px 2px rgb(0 0 0 / 18%); color:#fff; cursor:pointer; font:inherit; font-weight:700; padding:11px 17px; } #analyze:hover { background:#0669b6; } #analyze:focus-visible { outline:3px solid color-mix(in srgb, #0878d1 35%, transparent); outline-offset:2px; } #analyze:disabled { background:#6c8cab; cursor:wait; opacity:1; } .read-only { color:var(--secondary-text-color); font-size:13px; }
         .error { background:var(--error-color); border-radius:8px; color:var(--text-primary-color, white); margin-top:16px; padding:11px 13px; } .result { border-top:3px solid var(--primary-color); margin-top:22px; } .result.blocked { border-top-color:var(--error-color); } .result-heading { align-items:center; display:flex; justify-content:space-between; } .result.ready .chip { color:var(--success-color, #2e7d32); } .result p { color:var(--secondary-text-color); margin-top:8px; }
         .stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:20px; }.stat-card { background:var(--secondary-background-color); border:1px solid var(--divider-color); border-radius:9px; border-top:3px solid var(--primary-color); padding:16px; }.stat-card.target { border-top-color:var(--accent-color, #00a7d8); }.stat-card strong { display:block; font-family:var(--code-font-family, monospace); font-size:15px; margin-top:6px; overflow-wrap:anywhere; } dl { display:grid; gap:9px; margin:16px 0 0; } dl div { display:flex; gap:12px; justify-content:space-between; } dt { color:var(--secondary-text-color); } dd { margin:0; text-align:right; }
+        .timeline { background:var(--secondary-background-color); border:1px solid var(--divider-color); border-radius:9px; margin-top:20px; padding:16px; }.timeline-heading { display:flex; flex-direction:column; gap:4px; }.timeline-heading strong { font-size:17px; }.timeline-track { align-items:center; display:grid; grid-template-columns:minmax(0, 1fr) 54px minmax(0, 1fr); margin-top:16px; }.timeline-segment { background:#0878d1; border-radius:6px; color:#fff; font-size:13px; font-weight:700; padding:10px 12px; text-align:center; }.timeline-segment.target { background:var(--accent-color, #00a7d8); }.timeline-connector { background:var(--primary-color); height:4px; }.timeline.gap .timeline-connector { background:var(--warning-color, #f6a700); }.timeline.overlap .timeline-connector { background:var(--error-color); }.timeline-details { display:grid; gap:12px; grid-template-columns:1fr 1.25fr 1fr; margin-top:13px; }.timeline-details div { display:grid; gap:3px; }.timeline-details div:last-child { text-align:right; }.timeline-details span { color:var(--secondary-text-color); font-size:12px; }.timeline-details strong { font-size:13px; }.timeline-relation { text-align:center; }.timeline-relation strong { font-family:var(--primary-font-family, sans-serif); }
         .findings { display:grid; gap:8px; list-style:none; margin:20px 0 0; padding:0; }.finding { align-items:flex-start; background:var(--secondary-background-color); border-radius:8px; display:flex; gap:10px; padding:11px; }.finding span { align-items:center; background:var(--primary-color); border-radius:50%; color:white; display:inline-flex; flex:0 0 19px; font-size:12px; font-weight:700; height:19px; justify-content:center; }.finding.error span { background:var(--error-color); }.finding.warning span { background:var(--warning-color, #f6a700); }
         .review-plan { background:var(--secondary-background-color); border-left:3px solid #0878d1; border-radius:8px; margin-top:20px; padding:17px; }.review-plan.blocked-plan { border-left-color:var(--error-color); }.review-plan h2 { font-size:18px; margin-top:4px; }.review-plan p { color:var(--secondary-text-color); margin-top:7px; }.review-plan ol { display:grid; gap:8px; margin:16px 0 0; padding-left:22px; }.review-plan li { padding-left:3px; }
         .picker-backdrop { align-items:center; background:rgb(0 0 0 / 35%); display:flex; inset:0; justify-content:center; padding:20px; position:fixed; z-index:10; }.picker { background:var(--card-background-color); border:1px solid var(--divider-color); border-radius:12px; box-shadow:0 16px 40px rgb(0 0 0 / 28%); max-width:660px; padding:22px; width:100%; }.picker-heading { align-items:flex-start; display:flex; justify-content:space-between; margin-bottom:17px; }.close-picker { background:transparent; border:0; color:var(--secondary-text-color); cursor:pointer; font-size:28px; line-height:28px; padding:0 5px; }.picker-count { color:var(--secondary-text-color); font-size:13px; margin:11px 0; }.picker-options { border:1px solid var(--divider-color); border-radius:8px; max-height:420px; overflow:auto; }.picker-option { background:transparent; border:0; border-bottom:1px solid var(--divider-color); color:var(--primary-text-color); cursor:pointer; display:flex; font-family:var(--code-font-family, monospace); font-size:14px; font-weight:400; justify-content:space-between; padding:13px; text-align:left; width:100%; }.picker-option:hover { background:var(--secondary-background-color); }.picker-option span:last-child { color:#0878d1; font-family:var(--primary-font-family, sans-serif); font-size:12px; font-weight:700; }.picker-option:last-child { border-bottom:0; }.empty { color:var(--secondary-text-color); margin:0; padding:18px; }
-        @media (max-width:680px) { main { padding:22px 16px 32px; } header,.selection { display:block; } header .chip { display:inline-block; margin-top:14px; } .arrow { display:none; } label + .arrow + label { margin-top:14px; }.stat-grid { grid-template-columns:1fr; } .workspace,.result { padding:17px; } }
+        @media (max-width:680px) { main { padding:22px 16px 32px; } header,.selection { display:block; } header .chip { display:inline-block; margin-top:14px; } .arrow { display:none; } label + .arrow + label { margin-top:14px; }.stat-grid,.timeline-details { grid-template-columns:1fr; }.timeline-details div:last-child,.timeline-relation { text-align:left; } .workspace,.result { padding:17px; } }
       </style>
       <main>
         <header>

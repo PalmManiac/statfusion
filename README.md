@@ -41,8 +41,9 @@ no recorder or database changes.
 After the integration is added, **StatFusion** appears as an admin-only entry
 in the Home Assistant sidebar. The page provides searchable source and target
 statistic selection and presents the read-only result as a compact
-compatibility report. It follows the active Home Assistant theme and does not
-offer any action that changes statistics.
+compatibility report. The result also visualizes the time transition between
+source and target, including any gap or overlap. It follows the active Home
+Assistant theme and does not offer any action that changes statistics.
 
 ## Analyze a possible merge
 
