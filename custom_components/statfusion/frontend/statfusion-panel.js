@@ -20,6 +20,12 @@ const FINDING_MESSAGES = {
   time_range_contiguous: "Die Quelle endet unmittelbar vor Beginn des Ziels.",
 };
 
+const REVIEW_PLAN_STEPS = {
+  energy_flow_mismatch: "Den Energiefluss von Quelle und Ziel fachlich bestätigen.",
+  time_range_gap: "Die angezeigte Zeitlücke fachlich prüfen und dokumentieren.",
+  unit_conversion_required: "Die erforderliche Einheitenumrechnung fachlich und technisch prüfen.",
+};
+
 class StatFusionPanel extends HTMLElement {
   constructor() {
     super();
@@ -152,6 +158,35 @@ class StatFusionPanel extends HTMLElement {
           ${this._statisticCard("Ziel", this._result.target, "target")}
         </div>
         <ul class="findings">${findings}</ul>
+        ${this._reviewPlanTemplate(blocked)}
+      </section>`;
+  }
+
+  _reviewPlanTemplate(blocked) {
+    if (blocked) {
+      return `
+        <section class="review-plan blocked-plan">
+          <span class="eyebrow">Nächster Schritt</span>
+          <h2>Kein Übernahmeplan verfügbar</h2>
+          <p>Die blockierenden Hinweise müssen zuerst geklärt werden. Es wurden keine Daten verändert.</p>
+        </section>`;
+    }
+
+    const warningSteps = (this._result.findings || [])
+      .filter((finding) => finding.severity === "warning")
+      .map((finding) => REVIEW_PLAN_STEPS[finding.code] || "Den angezeigten Hinweis vor einer späteren Übernahme prüfen.");
+    const steps = [
+      ...new Set(warningSteps),
+      "Die fachliche Zuordnung von Quelle und Ziel bestätigen.",
+      "Vor einer späteren Übernahme eine vollständige Home-Assistant-Sicherung erstellen.",
+      "Eine spätere Datenübernahme separat prüfen, bestätigen und validieren.",
+    ];
+    return `
+      <section class="review-plan">
+        <span class="eyebrow">Vorschau</span>
+        <h2>Übernahmeplan zur Prüfung</h2>
+        <p>Dieser Plan beschreibt nur die notwendigen Vorbereitungen. Eine Datenübernahme ist noch nicht verfügbar.</p>
+        <ol>${steps.map((step) => `<li>${escapeHtml(step)}</li>`).join("")}</ol>
       </section>`;
   }
 
@@ -174,6 +209,7 @@ class StatFusionPanel extends HTMLElement {
         .error { background:var(--error-color); border-radius:8px; color:var(--text-primary-color, white); margin-top:16px; padding:11px 13px; } .result { border-top:3px solid var(--primary-color); margin-top:22px; } .result.blocked { border-top-color:var(--error-color); } .result-heading { align-items:center; display:flex; justify-content:space-between; } .result.ready .chip { color:var(--success-color, #2e7d32); } .result p { color:var(--secondary-text-color); margin-top:8px; }
         .stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:20px; }.stat-card { background:var(--secondary-background-color); border:1px solid var(--divider-color); border-radius:9px; border-top:3px solid var(--primary-color); padding:16px; }.stat-card.target { border-top-color:var(--accent-color, #00a7d8); }.stat-card strong { display:block; font-family:var(--code-font-family, monospace); font-size:15px; margin-top:6px; overflow-wrap:anywhere; } dl { display:grid; gap:9px; margin:16px 0 0; } dl div { display:flex; gap:12px; justify-content:space-between; } dt { color:var(--secondary-text-color); } dd { margin:0; text-align:right; }
         .findings { display:grid; gap:8px; list-style:none; margin:20px 0 0; padding:0; }.finding { align-items:flex-start; background:var(--secondary-background-color); border-radius:8px; display:flex; gap:10px; padding:11px; }.finding span { align-items:center; background:var(--primary-color); border-radius:50%; color:white; display:inline-flex; flex:0 0 19px; font-size:12px; font-weight:700; height:19px; justify-content:center; }.finding.error span { background:var(--error-color); }.finding.warning span { background:var(--warning-color, #f6a700); }
+        .review-plan { background:var(--secondary-background-color); border-left:3px solid #0878d1; border-radius:8px; margin-top:20px; padding:17px; }.review-plan.blocked-plan { border-left-color:var(--error-color); }.review-plan h2 { font-size:18px; margin-top:4px; }.review-plan p { color:var(--secondary-text-color); margin-top:7px; }.review-plan ol { display:grid; gap:8px; margin:16px 0 0; padding-left:22px; }.review-plan li { padding-left:3px; }
         .picker-backdrop { align-items:center; background:rgb(0 0 0 / 35%); display:flex; inset:0; justify-content:center; padding:20px; position:fixed; z-index:10; }.picker { background:var(--card-background-color); border:1px solid var(--divider-color); border-radius:12px; box-shadow:0 16px 40px rgb(0 0 0 / 28%); max-width:660px; padding:22px; width:100%; }.picker-heading { align-items:flex-start; display:flex; justify-content:space-between; margin-bottom:17px; }.close-picker { background:transparent; border:0; color:var(--secondary-text-color); cursor:pointer; font-size:28px; line-height:28px; padding:0 5px; }.picker-count { color:var(--secondary-text-color); font-size:13px; margin:11px 0; }.picker-options { border:1px solid var(--divider-color); border-radius:8px; max-height:420px; overflow:auto; }.picker-option { background:transparent; border:0; border-bottom:1px solid var(--divider-color); color:var(--primary-text-color); cursor:pointer; display:flex; font-family:var(--code-font-family, monospace); font-size:14px; font-weight:400; justify-content:space-between; padding:13px; text-align:left; width:100%; }.picker-option:hover { background:var(--secondary-background-color); }.picker-option span:last-child { color:#0878d1; font-family:var(--primary-font-family, sans-serif); font-size:12px; font-weight:700; }.picker-option:last-child { border-bottom:0; }.empty { color:var(--secondary-text-color); margin:0; padding:18px; }
         @media (max-width:680px) { main { padding:22px 16px 32px; } header,.selection { display:block; } header .chip { display:inline-block; margin-top:14px; } .arrow { display:none; } label + .arrow + label { margin-top:14px; }.stat-grid { grid-template-columns:1fr; } .workspace,.result { padding:17px; } }
       </style>
