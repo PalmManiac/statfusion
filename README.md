@@ -45,7 +45,8 @@ compatibility report. The result also visualizes the time transition between
 source and target, including any gap or overlap, and summarizes the technical,
 energy-flow, and time-range checks. It follows the active Home Assistant theme
 and can copy the displayed analysis as plain text. It does not offer any action
-that changes statistics.
+that changes statistics. The last five analyses remain visible only for the
+current open panel session and can restore their source and target selection.
 
 ## Analyze a possible merge
 
