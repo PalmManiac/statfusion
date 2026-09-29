@@ -30,6 +30,9 @@ def test_sidebar_panel_is_packaged_with_read_only_analysis_ui() -> None:
     assert "Zeitlicher Übergang" in panel
     assert "Zwischen Quelle und Ziel liegt eine Zeitlücke" in panel
     assert "Quelle und Ziel überlappen sich" in panel
+    assert "Prüfstatus" in panel
+    assert "Energiefluss" in panel
+    assert "Keine blockierende technische Abweichung erkannt." in panel
 
 
 def test_sidebar_panel_is_admin_only_and_served_by_the_integration() -> None:

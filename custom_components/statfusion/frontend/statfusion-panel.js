@@ -176,6 +176,39 @@ class StatFusionPanel extends HTMLElement {
       </section>`;
   }
 
+  _assessmentTemplate() {
+    const findings = this._result.findings || [];
+    const hasError = findings.some((finding) => finding.severity === "error");
+    const flowMismatch = findings.some((finding) => finding.code === "energy_flow_mismatch");
+    const timeFinding = findings.find((finding) => finding.code.startsWith("time_range_"));
+    const hasTimeRange = this._result.source.first && this._result.source.last
+      && this._result.target.first && this._result.target.last;
+    const technical = hasError
+      ? { tone: "error", title: "Technik", value: "Blockiert", detail: "Mindestens eine technische Voraussetzung fehlt." }
+      : { tone: "good", title: "Technik", value: "Geprüft", detail: "Keine blockierende technische Abweichung erkannt." };
+    const semantics = flowMismatch
+      ? { tone: "warning", title: "Energiefluss", value: "Prüfen", detail: "Quelle und Ziel könnten unterschiedliche Flüsse beschreiben." }
+      : { tone: "good", title: "Energiefluss", value: "Kein Hinweis", detail: "Die Statistik-IDs liefern keinen gegenteiligen Flusshinweis." };
+    const timeline = !hasTimeRange
+      ? { tone: "neutral", title: "Zeitraum", value: "Nicht verfügbar", detail: "Für mindestens eine Statistik fehlen Zeitbereichsdaten." }
+      : timeFinding && timeFinding.code === "time_range_overlap"
+      ? { tone: "error", title: "Zeitraum", value: "Überlappung", detail: "Die Zeiträume können nicht direkt aneinander anschließen." }
+      : timeFinding && timeFinding.code === "time_range_gap"
+        ? { tone: "warning", title: "Zeitraum", value: "Lücke", detail: "Die Lücke muss vor einer späteren Übernahme geprüft werden." }
+        : { tone: "good", title: "Zeitraum", value: "Direkter Übergang", detail: "Quelle und Ziel schließen zeitlich direkt aneinander an." };
+
+    return `
+      <section class="assessment" aria-label="Prüfstatus">
+        <div class="assessment-heading"><span class="eyebrow">Auf einen Blick</span><strong>Prüfstatus</strong></div>
+        <div class="assessment-grid">
+          ${[technical, semantics, timeline].map((item) => `
+            <article class="assessment-card ${item.tone}">
+              <span>${item.title}</span><strong>${item.value}</strong><p>${item.detail}</p>
+            </article>`).join("")}
+        </div>
+      </section>`;
+  }
+
   _resultTemplate() {
     if (!this._result) return "";
     const blocked = this._result.decision === "blocked";
@@ -192,6 +225,7 @@ class StatFusionPanel extends HTMLElement {
           <span class="chip">${this._result.analysis_only ? "Keine Änderungen" : ""}</span>
         </div>
         <p>${blocked ? "Die ausgewählten Statistiken sind technisch nicht kompatibel. Es wurde kein Übernahmeplan erstellt und keine Recorder-Daten wurden verändert." : "Die ausgewählten Statistiken können als möglicher Kandidat für eine spätere Übernahme geprüft werden. Es wurden keine Recorder-Daten verändert."}</p>
+        ${this._assessmentTemplate()}
         <div class="stat-grid">
           ${this._statisticCard("Quelle", this._result.source, "source")}
           ${this._statisticCard("Ziel", this._result.target, "target")}
@@ -248,11 +282,12 @@ class StatFusionPanel extends HTMLElement {
         .actions { display:flex; align-items:center; gap:14px; margin-top:18px; } #analyze { appearance:none; background:#0878d1; border:0; border-radius:8px; box-shadow:0 1px 2px rgb(0 0 0 / 18%); color:#fff; cursor:pointer; font:inherit; font-weight:700; padding:11px 17px; } #analyze:hover { background:#0669b6; } #analyze:focus-visible { outline:3px solid color-mix(in srgb, #0878d1 35%, transparent); outline-offset:2px; } #analyze:disabled { background:#6c8cab; cursor:wait; opacity:1; } .read-only { color:var(--secondary-text-color); font-size:13px; }
         .error { background:var(--error-color); border-radius:8px; color:var(--text-primary-color, white); margin-top:16px; padding:11px 13px; } .result { border-top:3px solid var(--primary-color); margin-top:22px; } .result.blocked { border-top-color:var(--error-color); } .result-heading { align-items:center; display:flex; justify-content:space-between; } .result.ready .chip { color:var(--success-color, #2e7d32); } .result p { color:var(--secondary-text-color); margin-top:8px; }
         .stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:20px; }.stat-card { background:var(--secondary-background-color); border:1px solid var(--divider-color); border-radius:9px; border-top:3px solid var(--primary-color); padding:16px; }.stat-card.target { border-top-color:var(--accent-color, #00a7d8); }.stat-card strong { display:block; font-family:var(--code-font-family, monospace); font-size:15px; margin-top:6px; overflow-wrap:anywhere; } dl { display:grid; gap:9px; margin:16px 0 0; } dl div { display:flex; gap:12px; justify-content:space-between; } dt { color:var(--secondary-text-color); } dd { margin:0; text-align:right; }
+        .assessment { margin-top:20px; }.assessment-heading { display:flex; flex-direction:column; gap:4px; }.assessment-heading strong { font-size:17px; }.assessment-grid { display:grid; gap:12px; grid-template-columns:repeat(3, 1fr); margin-top:12px; }.assessment-card { background:var(--secondary-background-color); border:1px solid var(--divider-color); border-left:3px solid var(--primary-color); border-radius:9px; padding:14px; }.assessment-card.warning { border-left-color:var(--warning-color, #f6a700); }.assessment-card.error { border-left-color:var(--error-color); }.assessment-card span { color:var(--secondary-text-color); display:block; font-size:12px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; }.assessment-card strong { display:block; font-size:17px; margin-top:4px; }.assessment-card p { font-size:13px; line-height:1.4; margin-top:6px; }
         .timeline { background:var(--secondary-background-color); border:1px solid var(--divider-color); border-radius:9px; margin-top:20px; padding:16px; }.timeline-heading { display:flex; flex-direction:column; gap:4px; }.timeline-heading strong { font-size:17px; }.timeline-track { align-items:center; display:grid; grid-template-columns:minmax(0, 1fr) 54px minmax(0, 1fr); margin-top:16px; }.timeline-segment { background:#0878d1; border-radius:6px; color:#fff; font-size:13px; font-weight:700; padding:10px 12px; text-align:center; }.timeline-segment.target { background:var(--accent-color, #00a7d8); }.timeline-connector { background:var(--primary-color); height:4px; }.timeline.gap .timeline-connector { background:var(--warning-color, #f6a700); }.timeline.overlap .timeline-connector { background:var(--error-color); }.timeline-details { display:grid; gap:12px; grid-template-columns:1fr 1.25fr 1fr; margin-top:13px; }.timeline-details div { display:grid; gap:3px; }.timeline-details div:last-child { text-align:right; }.timeline-details span { color:var(--secondary-text-color); font-size:12px; }.timeline-details strong { font-size:13px; }.timeline-relation { text-align:center; }.timeline-relation strong { font-family:var(--primary-font-family, sans-serif); }
         .findings { display:grid; gap:8px; list-style:none; margin:20px 0 0; padding:0; }.finding { align-items:flex-start; background:var(--secondary-background-color); border-radius:8px; display:flex; gap:10px; padding:11px; }.finding span { align-items:center; background:var(--primary-color); border-radius:50%; color:white; display:inline-flex; flex:0 0 19px; font-size:12px; font-weight:700; height:19px; justify-content:center; }.finding.error span { background:var(--error-color); }.finding.warning span { background:var(--warning-color, #f6a700); }
         .review-plan { background:var(--secondary-background-color); border-left:3px solid #0878d1; border-radius:8px; margin-top:20px; padding:17px; }.review-plan.blocked-plan { border-left-color:var(--error-color); }.review-plan h2 { font-size:18px; margin-top:4px; }.review-plan p { color:var(--secondary-text-color); margin-top:7px; }.review-plan ol { display:grid; gap:8px; margin:16px 0 0; padding-left:22px; }.review-plan li { padding-left:3px; }
         .picker-backdrop { align-items:center; background:rgb(0 0 0 / 35%); display:flex; inset:0; justify-content:center; padding:20px; position:fixed; z-index:10; }.picker { background:var(--card-background-color); border:1px solid var(--divider-color); border-radius:12px; box-shadow:0 16px 40px rgb(0 0 0 / 28%); max-width:660px; padding:22px; width:100%; }.picker-heading { align-items:flex-start; display:flex; justify-content:space-between; margin-bottom:17px; }.close-picker { background:transparent; border:0; color:var(--secondary-text-color); cursor:pointer; font-size:28px; line-height:28px; padding:0 5px; }.picker-count { color:var(--secondary-text-color); font-size:13px; margin:11px 0; }.picker-options { border:1px solid var(--divider-color); border-radius:8px; max-height:420px; overflow:auto; }.picker-option { background:transparent; border:0; border-bottom:1px solid var(--divider-color); color:var(--primary-text-color); cursor:pointer; display:flex; font-family:var(--code-font-family, monospace); font-size:14px; font-weight:400; justify-content:space-between; padding:13px; text-align:left; width:100%; }.picker-option:hover { background:var(--secondary-background-color); }.picker-option span:last-child { color:#0878d1; font-family:var(--primary-font-family, sans-serif); font-size:12px; font-weight:700; }.picker-option:last-child { border-bottom:0; }.empty { color:var(--secondary-text-color); margin:0; padding:18px; }
-        @media (max-width:680px) { main { padding:22px 16px 32px; } header,.selection { display:block; } header .chip { display:inline-block; margin-top:14px; } .arrow { display:none; } label + .arrow + label { margin-top:14px; }.stat-grid,.timeline-details { grid-template-columns:1fr; }.timeline-details div:last-child,.timeline-relation { text-align:left; } .workspace,.result { padding:17px; } }
+        @media (max-width:680px) { main { padding:22px 16px 32px; } header,.selection { display:block; } header .chip { display:inline-block; margin-top:14px; } .arrow { display:none; } label + .arrow + label { margin-top:14px; }.assessment-grid,.stat-grid,.timeline-details { grid-template-columns:1fr; }.timeline-details div:last-child,.timeline-relation { text-align:left; } .workspace,.result { padding:17px; } }
       </style>
       <main>
         <header>
