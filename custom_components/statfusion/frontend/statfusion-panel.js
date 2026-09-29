@@ -35,6 +35,7 @@ class StatFusionPanel extends HTMLElement {
     this._target = "";
     this._result = null;
     this._error = "";
+    this._copyStatus = "";
     this._loading = false;
     this._statisticsLoading = false;
     this._pickerRole = "";
@@ -79,6 +80,7 @@ class StatFusionPanel extends HTMLElement {
     this._target = target;
     this._error = "";
     this._result = null;
+    this._copyStatus = "";
 
     if (!source || !target) {
       this._error = "Bitte wähle eine Quell- und eine Zielstatistik aus.";
@@ -135,6 +137,34 @@ class StatFusionPanel extends HTMLElement {
           <div><dt>Stundenwerte</dt><dd>${snapshot.sample_count == null ? 0 : snapshot.sample_count}</dd></div>
         </dl>
       </article>`;
+  }
+
+  async _copyResult() {
+    if (!this._result || !navigator.clipboard) return;
+
+    const status = this._result.decision === "blocked" ? "Nicht bereit" : "Bereit zur Prüfung";
+    const findings = (this._result.findings || [])
+      .map((finding) => `- ${FINDING_MESSAGES[finding.code] || finding.message}`);
+    const text = [
+      "StatFusion – Analyse",
+      `Status: ${status}`,
+      `Quelle: ${this._result.source.statistic_id}`,
+      `Ziel: ${this._result.target.statistic_id}`,
+      `Quelle Zeitraum: ${this._formatDate(this._result.source.first)} – ${this._formatDate(this._result.source.last)}`,
+      `Ziel Zeitraum: ${this._formatDate(this._result.target.first)} – ${this._formatDate(this._result.target.last)}`,
+      "Hinweise:",
+      ...(findings.length ? findings : ["- Keine Hinweise"]),
+      "",
+      "Die Analyse verändert keine Daten.",
+    ].join("\n");
+
+    try {
+      await navigator.clipboard.writeText(text);
+      this._copyStatus = "Analyse kopiert";
+    } catch (error) {
+      this._copyStatus = "Kopieren nicht möglich";
+    }
+    this._render();
   }
 
   _formatDuration(milliseconds) {
@@ -222,8 +252,9 @@ class StatFusionPanel extends HTMLElement {
       <section class="result ${blocked ? "blocked" : "ready"}">
         <div class="result-heading">
           <div><span class="eyebrow">Prüfung</span><h2>${status}</h2></div>
-          <span class="chip">${this._result.analysis_only ? "Keine Änderungen" : ""}</span>
+          <div class="result-actions"><span class="chip">${this._result.analysis_only ? "Keine Änderungen" : ""}</span><button class="copy-result" id="copy-result" type="button">Analyse kopieren</button></div>
         </div>
+        ${this._copyStatus ? `<p class="copy-status" aria-live="polite">${escapeHtml(this._copyStatus)}</p>` : ""}
         <p>${blocked ? "Die ausgewählten Statistiken sind technisch nicht kompatibel. Es wurde kein Übernahmeplan erstellt und keine Recorder-Daten wurden verändert." : "Die ausgewählten Statistiken können als möglicher Kandidat für eine spätere Übernahme geprüft werden. Es wurden keine Recorder-Daten verändert."}</p>
         ${this._assessmentTemplate()}
         <div class="stat-grid">
@@ -280,14 +311,14 @@ class StatFusionPanel extends HTMLElement {
         .selection { display:grid; grid-template-columns:1fr 42px 1fr; gap:12px; align-items:end; }
         label { color:var(--secondary-text-color); display:grid; font-size:14px; font-weight:600; gap:7px; } input { box-sizing:border-box; background:var(--input-fill-color, var(--secondary-background-color)); border:1px solid var(--input-idle-line-color, var(--divider-color)); border-radius:8px; color:var(--primary-text-color); font:inherit; padding:12px; width:100%; } input:focus { border-color:var(--primary-color); outline:2px solid color-mix(in srgb, var(--primary-color) 25%, transparent); }.input-row { display:flex; gap:8px; }.input-row input { min-width:0; }.picker-trigger { background:var(--secondary-background-color); border:1px solid var(--divider-color); border-radius:8px; color:var(--primary-text-color); cursor:pointer; font:inherit; font-weight:700; padding:0 12px; white-space:nowrap; }.picker-trigger:hover { border-color:#0878d1; color:#0878d1; }.arrow { color:var(--primary-color); font-size:25px; line-height:45px; text-align:center; }
         .actions { display:flex; align-items:center; gap:14px; margin-top:18px; } #analyze { appearance:none; background:#0878d1; border:0; border-radius:8px; box-shadow:0 1px 2px rgb(0 0 0 / 18%); color:#fff; cursor:pointer; font:inherit; font-weight:700; padding:11px 17px; } #analyze:hover { background:#0669b6; } #analyze:focus-visible { outline:3px solid color-mix(in srgb, #0878d1 35%, transparent); outline-offset:2px; } #analyze:disabled { background:#6c8cab; cursor:wait; opacity:1; } .read-only { color:var(--secondary-text-color); font-size:13px; }
-        .error { background:var(--error-color); border-radius:8px; color:var(--text-primary-color, white); margin-top:16px; padding:11px 13px; } .result { border-top:3px solid var(--primary-color); margin-top:22px; } .result.blocked { border-top-color:var(--error-color); } .result-heading { align-items:center; display:flex; justify-content:space-between; } .result.ready .chip { color:var(--success-color, #2e7d32); } .result p { color:var(--secondary-text-color); margin-top:8px; }
+        .error { background:var(--error-color); border-radius:8px; color:var(--text-primary-color, white); margin-top:16px; padding:11px 13px; } .result { border-top:3px solid var(--primary-color); margin-top:22px; } .result.blocked { border-top-color:var(--error-color); } .result-heading,.result-actions { align-items:center; display:flex; justify-content:space-between; } .result-actions { gap:9px; }.copy-result { background:transparent; border:1px solid var(--divider-color); border-radius:7px; color:var(--primary-text-color); cursor:pointer; font:inherit; font-size:13px; font-weight:700; padding:7px 10px; }.copy-result:hover { border-color:#0878d1; color:#0878d1; }.copy-result:focus-visible { outline:3px solid color-mix(in srgb, #0878d1 35%, transparent); outline-offset:2px; }.result.ready .chip { color:var(--success-color, #2e7d32); } .result p { color:var(--secondary-text-color); margin-top:8px; }.copy-status { color:var(--success-color, #2e7d32); font-size:13px; font-weight:700; }
         .stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:20px; }.stat-card { background:var(--secondary-background-color); border:1px solid var(--divider-color); border-radius:9px; border-top:3px solid var(--primary-color); padding:16px; }.stat-card.target { border-top-color:var(--accent-color, #00a7d8); }.stat-card strong { display:block; font-family:var(--code-font-family, monospace); font-size:15px; margin-top:6px; overflow-wrap:anywhere; } dl { display:grid; gap:9px; margin:16px 0 0; } dl div { display:flex; gap:12px; justify-content:space-between; } dt { color:var(--secondary-text-color); } dd { margin:0; text-align:right; }
         .assessment { margin-top:20px; }.assessment-heading { display:flex; flex-direction:column; gap:4px; }.assessment-heading strong { font-size:17px; }.assessment-grid { display:grid; gap:12px; grid-template-columns:repeat(3, 1fr); margin-top:12px; }.assessment-card { background:var(--secondary-background-color); border:1px solid var(--divider-color); border-left:3px solid var(--primary-color); border-radius:9px; padding:14px; }.assessment-card.warning { border-left-color:var(--warning-color, #f6a700); }.assessment-card.error { border-left-color:var(--error-color); }.assessment-card span { color:var(--secondary-text-color); display:block; font-size:12px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; }.assessment-card strong { display:block; font-size:17px; margin-top:4px; }.assessment-card p { font-size:13px; line-height:1.4; margin-top:6px; }
         .timeline { background:var(--secondary-background-color); border:1px solid var(--divider-color); border-radius:9px; margin-top:20px; padding:16px; }.timeline-heading { display:flex; flex-direction:column; gap:4px; }.timeline-heading strong { font-size:17px; }.timeline-track { align-items:center; display:grid; grid-template-columns:minmax(0, 1fr) 54px minmax(0, 1fr); margin-top:16px; }.timeline-segment { background:#0878d1; border-radius:6px; color:#fff; font-size:13px; font-weight:700; padding:10px 12px; text-align:center; }.timeline-segment.target { background:var(--accent-color, #00a7d8); }.timeline-connector { background:var(--primary-color); height:4px; }.timeline.gap .timeline-connector { background:var(--warning-color, #f6a700); }.timeline.overlap .timeline-connector { background:var(--error-color); }.timeline-details { display:grid; gap:12px; grid-template-columns:1fr 1.25fr 1fr; margin-top:13px; }.timeline-details div { display:grid; gap:3px; }.timeline-details div:last-child { text-align:right; }.timeline-details span { color:var(--secondary-text-color); font-size:12px; }.timeline-details strong { font-size:13px; }.timeline-relation { text-align:center; }.timeline-relation strong { font-family:var(--primary-font-family, sans-serif); }
         .findings { display:grid; gap:8px; list-style:none; margin:20px 0 0; padding:0; }.finding { align-items:flex-start; background:var(--secondary-background-color); border-radius:8px; display:flex; gap:10px; padding:11px; }.finding span { align-items:center; background:var(--primary-color); border-radius:50%; color:white; display:inline-flex; flex:0 0 19px; font-size:12px; font-weight:700; height:19px; justify-content:center; }.finding.error span { background:var(--error-color); }.finding.warning span { background:var(--warning-color, #f6a700); }
         .review-plan { background:var(--secondary-background-color); border-left:3px solid #0878d1; border-radius:8px; margin-top:20px; padding:17px; }.review-plan.blocked-plan { border-left-color:var(--error-color); }.review-plan h2 { font-size:18px; margin-top:4px; }.review-plan p { color:var(--secondary-text-color); margin-top:7px; }.review-plan ol { display:grid; gap:8px; margin:16px 0 0; padding-left:22px; }.review-plan li { padding-left:3px; }
         .picker-backdrop { align-items:center; background:rgb(0 0 0 / 35%); display:flex; inset:0; justify-content:center; padding:20px; position:fixed; z-index:10; }.picker { background:var(--card-background-color); border:1px solid var(--divider-color); border-radius:12px; box-shadow:0 16px 40px rgb(0 0 0 / 28%); max-width:660px; padding:22px; width:100%; }.picker-heading { align-items:flex-start; display:flex; justify-content:space-between; margin-bottom:17px; }.close-picker { background:transparent; border:0; color:var(--secondary-text-color); cursor:pointer; font-size:28px; line-height:28px; padding:0 5px; }.picker-count { color:var(--secondary-text-color); font-size:13px; margin:11px 0; }.picker-options { border:1px solid var(--divider-color); border-radius:8px; max-height:420px; overflow:auto; }.picker-option { background:transparent; border:0; border-bottom:1px solid var(--divider-color); color:var(--primary-text-color); cursor:pointer; display:flex; font-family:var(--code-font-family, monospace); font-size:14px; font-weight:400; justify-content:space-between; padding:13px; text-align:left; width:100%; }.picker-option:hover { background:var(--secondary-background-color); }.picker-option span:last-child { color:#0878d1; font-family:var(--primary-font-family, sans-serif); font-size:12px; font-weight:700; }.picker-option:last-child { border-bottom:0; }.empty { color:var(--secondary-text-color); margin:0; padding:18px; }
-        @media (max-width:680px) { main { padding:22px 16px 32px; } header,.selection { display:block; } header .chip { display:inline-block; margin-top:14px; } .arrow { display:none; } label + .arrow + label { margin-top:14px; }.assessment-grid,.stat-grid,.timeline-details { grid-template-columns:1fr; }.timeline-details div:last-child,.timeline-relation { text-align:left; } .workspace,.result { padding:17px; } }
+        @media (max-width:680px) { main { padding:22px 16px 32px; } header,.selection { display:block; } header .chip { display:inline-block; margin-top:14px; } .result-heading { align-items:flex-start; gap:12px; }.result-actions { align-items:flex-end; flex-direction:column; } .arrow { display:none; } label + .arrow + label { margin-top:14px; }.assessment-grid,.stat-grid,.timeline-details { grid-template-columns:1fr; }.timeline-details div:last-child,.timeline-relation { text-align:left; } .workspace,.result { padding:17px; } }
       </style>
       <main>
         <header>
@@ -309,6 +340,8 @@ class StatFusionPanel extends HTMLElement {
       </main>
       ${this._pickerTemplate()}`;
     this.shadowRoot.querySelector("#analyze").addEventListener("click", () => this._analyze());
+    const copyResult = this.shadowRoot.querySelector("#copy-result");
+    if (copyResult) copyResult.addEventListener("click", () => this._copyResult());
     this.shadowRoot.querySelector("#source").addEventListener("input", (event) => {
       this._source = event.target.value;
     });

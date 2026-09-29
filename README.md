@@ -44,7 +44,8 @@ statistic selection and presents the read-only result as a compact
 compatibility report. The result also visualizes the time transition between
 source and target, including any gap or overlap, and summarizes the technical,
 energy-flow, and time-range checks. It follows the active Home Assistant theme
-and does not offer any action that changes statistics.
+and can copy the displayed analysis as plain text. It does not offer any action
+that changes statistics.
 
 ## Analyze a possible merge
 
