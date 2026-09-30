@@ -4,6 +4,7 @@ from pathlib import Path
 
 PANEL_PATH = Path("custom_components/statfusion/frontend/statfusion-panel.js")
 REGISTRATION_PATH = Path("custom_components/statfusion/panel.py")
+CONSTANTS_PATH = Path("custom_components/statfusion/const.py")
 
 
 def test_sidebar_panel_is_packaged_with_read_only_analysis_ui() -> None:
@@ -55,3 +56,11 @@ def test_sidebar_panel_is_admin_only_and_served_by_the_integration() -> None:
     assert 'sidebar_title=NAME' in registration
     assert 'require_admin=True' in registration
     assert '"js_url": PANEL_JS_URL' in registration
+
+
+def test_sidebar_panel_module_url_has_a_version_token() -> None:
+    """Force browser clients to request each shipped panel revision."""
+    constants = CONSTANTS_PATH.read_text(encoding="utf-8")
+
+    assert 'PANEL_JS_VERSION = "2"' in constants
+    assert 'statfusion-panel.js?v={PANEL_JS_VERSION}' in constants
