@@ -12,10 +12,24 @@ def test_manifest_has_required_custom_integration_metadata() -> None:
 
     assert manifest["domain"] == "statfusion"
     assert manifest["name"] == "StatFusion"
-    assert manifest["version"] == "0.1.0"
+    assert manifest["version"] == "1.0.0"
     assert manifest["config_flow"] is True
     assert manifest["dependencies"] == ["frontend", "http", "recorder"]
     assert manifest["integration_type"] == "service"
     assert manifest["documentation"].startswith("https://")
     assert manifest["issue_tracker"].endswith("/issues")
     assert manifest["codeowners"] == ["@PalmManiac"]
+
+
+def test_release_documentation_is_linked_and_does_not_call_review_approval() -> None:
+    """Keep release guides discoverable and use cautious analysis wording."""
+    readme = Path("README.md").read_text(encoding="utf-8")
+    english_guide = Path("docs/user-guide.md").read_text(encoding="utf-8")
+    german_guide = Path("docs/anleitung.md").read_text(encoding="utf-8")
+
+    assert "[English user guide](docs/user-guide.md)" in readme
+    assert "[Deutsche Anleitung](docs/anleitung.md)" in readme
+    assert "Ready for review" in english_guide
+    assert "Bereit zur Prüfung" in german_guide
+    assert "warnings_confirmed: true" in english_guide
+    assert "warnings_confirmed: true" in german_guide

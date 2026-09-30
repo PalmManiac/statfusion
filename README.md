@@ -4,108 +4,52 @@
 [![Active installs](https://badge.t-haber.de/badge/statfusion?kill_cache=1)](https://github.com/PalmManiac/statfusion/)
 ![GitHub Stars](https://img.shields.io/github/stars/PalmManiac/statfusion?style=for-the-badge)
 ![License](https://img.shields.io/github/license/PalmManiac/statfusion?style=for-the-badge)
-![HACS](https://img.shields.io/badge/HACS-Default-blue?style=for-the-badge)
+![HACS custom repository](https://img.shields.io/badge/HACS-Custom%20repository-blue?style=for-the-badge)
 
 # StatFusion
 
-StatFusion is a Home Assistant tool for safely analyzing how long-term
-statistics can be carried from one entity to another after an entity or device
-change.
+StatFusion is a Home Assistant integration for reviewing and merging hourly
+long-term statistics when replacing an entity or device. It provides an
+administrator-only sidebar dashboard, a read-only compatibility analysis, and
+a separately confirmed merge action.
 
-## Current status
+- [English user guide](docs/user-guide.md)
+- [Deutsche Anleitung](docs/anleitung.md)
 
-StatFusion analyzes two long-term statistics and can copy the source's hourly
-history into the target after a full Home Assistant backup and explicit
-confirmation. The source is preserved. Existing target hours are preserved,
-and any timestamp overlap or unit conversion requirement blocks the operation.
+## What StatFusion changes
 
-## Planned first workflow
+Analysis never writes to Recorder. A merge copies source hourly rows into the
+target only when the target has no row at those timestamps. It preserves the
+source and existing target rows, copies recorded values without recalculating
+cumulative sums, waits for Recorder, and verifies the imported rows.
 
-1. Select a source entity and a target entity.
-2. Inspect statistic type, unit, time range, and possible overlap.
-3. Show gaps, cumulative-baseline jumps, and other review warnings.
-4. Copy only non-overlapping hourly rows without changing their values.
+Overlapping time ranges, incompatible statistic types, and unit conversions
+block a merge. Time gaps, possible opposite energy flows, and cumulative
+baseline differences are warnings for the user to review; a result marked
+**Ready for review** is not an instruction to merge. A full Home Assistant
+backup is required. Historical Recorder changes are made at the user's own
+risk.
 
-## Installation during development
+## Installation
 
-Copy `custom_components/statfusion` into the `custom_components` directory of
-a Home Assistant development instance, then restart Home Assistant. Add
-**StatFusion** from **Settings → Devices & services**.
+StatFusion can currently be added to HACS as a custom integration repository:
 
-StatFusion creates no entities and has no background polling. Historical data
-is only changed by the separate, administrator-only merge action.
+1. In HACS, open **Integrations** and choose **Custom repositories** from the
+   menu.
+2. Add `https://github.com/PalmManiac/statfusion` and select **Integration**.
+3. Install StatFusion from HACS, then restart Home Assistant.
+4. Add **StatFusion** from **Settings → Devices & services**. Its dashboard
+   appears in the sidebar for administrators.
 
-## Sidebar analysis
-
-After the integration is added, **StatFusion** appears as an admin-only entry
-in the Home Assistant sidebar. The page provides searchable source and target
-statistic selection and presents the read-only result as a compact
-compatibility report. The result also visualizes the time transition between
-source and target, including any gap or overlap, and summarizes the technical,
-energy-flow, and time-range checks. It follows the active Home Assistant theme
-and can copy the displayed analysis as plain text. It does not offer any action
-that changes statistics. The last five analyses remain visible only for the
-current open panel session and can restore their source and target selection.
-The result uses a compact two-column layout on wider displays; the session
-history and the standard preparation plan can be expanded when needed.
-
-## Analyze a possible merge
-
-The sidebar is the preferred way to analyze and merge. The administrator-only
-`statfusion.analyze` action also remains available in Home Assistant's
-Developer Tools. Supply the older and newer statistic IDs:
-
-```yaml
-action: statfusion.analyze
-data:
-  source_statistic_id: sensor.old_energy
-  target_statistic_id: sensor.new_energy
-```
-
-The action returns metadata, time ranges, and compatibility findings. A
-`ready_for_review` result does not itself start a merge.
-
-## Merge historical statistics
-
-After analysis, the panel requires a full Home Assistant backup and a separate
-confirmation before calling `statfusion.merge`. The merge rechecks both
-statistics immediately before writing, blocks any overlapping hourly timestamp
-or unit conversion, copies the source values into the target, waits for the
-recorder to finish, and verifies the copied rows. Source rows and existing target
-rows remain unchanged. Values are copied as recorded; StatFusion does not add or
-normalize cumulative sums. Different cumulative baselines may therefore appear
-as a visible jump. A time gap or possible energy-flow mismatch also needs review
-before confirmation.
-
-The merge action is admin-only and requires the backup, warning-review, and
-merge confirmations when called from Developer Tools:
-
-```yaml
-action: statfusion.merge
-data:
-  source_statistic_id: sensor.old_energy
-  target_statistic_id: sensor.new_energy
-  backup_confirmed: true
-  confirm: true
-```
-
-The sidebar follows Home Assistant's selected language and supports German and
-English. It keeps a prominent backup and own-risk notice visible before
-selection and analysis. Before the merge, users must acknowledge the backup,
-review the warnings, confirm the source/target selection, and approve a final
-browser confirmation.
-
-## Project principles
-
-- Keep all statistics operations database-backend independent.
-- Prefer Home Assistant recorder interfaces over direct SQLite access.
-- Analyze first; require explicit confirmation for writes.
-- Treat a full Home Assistant backup as a prerequisite for historical writes.
+Until it is included in HACS's default list, users need to add the repository
+manually. The repository also supports manual installation by copying
+`custom_components/statfusion` into Home Assistant's `custom_components`
+directory and restarting.
 
 ## Development
 
-The repository uses HACS and Home Assistant hassfest validation in GitHub
-Actions. Python style checks are configured in `pyproject.toml`.
+The repository runs Ruff, pytest, HACS validation, and Home Assistant hassfest
+in GitHub Actions. The manifest version follows semantic versioning.
 
 ## License
 

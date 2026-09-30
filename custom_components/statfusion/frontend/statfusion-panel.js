@@ -55,7 +55,7 @@ const EN_TRANSLATIONS = {
   "Die Analyse konnte nicht ausgeführt werden. Bitte prüfe die Auswahl.": "The analysis could not be run. Check your selection.",
   "Die Übernahme wurde blockiert oder konnte nicht bestätigt werden. Prüfe die Hinweise und Recorder-Protokolle, bevor du es erneut versuchst.": "The merge was blocked or could not be verified. Review the findings and Recorder logs before trying again.",
   "Letzte Prüfungen": "Recent checks",
-  "Zur Übernahme bereit": "Ready to merge",
+  "Zur Übernahme bereit": "Ready for review",
   "Bereit zur Prüfung": "Ready for review",
   "Die Analyse verändert keine Daten.": "The analysis does not change any data.",
   "Keine Hinweise": "No findings",
@@ -376,7 +376,7 @@ class StatFusionPanel extends HTMLElement {
         <div class="history-list">${this._analysisHistory.map((entry, index) => `
           <article class="history-entry ${entry.decision === "blocked" ? "blocked" : "ready"}">
             <div><strong>${escapeHtml(entry.source)}</strong><span>→</span><strong>${escapeHtml(entry.target)}</strong></div>
-            <div class="history-actions"><span>${entry.decision === "blocked" ? "Blockiert" : "Zur Übernahme bereit"}</span><button type="button" class="reuse-analysis" data-history-index="${index}">Auswahl übernehmen</button></div>
+            <div class="history-actions"><span>${entry.decision === "blocked" ? "Blockiert" : "Bereit zur Prüfung"}</span><button type="button" class="reuse-analysis" data-history-index="${index}">Auswahl übernehmen</button></div>
           </article>`).join("")}</div>
       </details>`;
   }
@@ -489,7 +489,7 @@ class StatFusionPanel extends HTMLElement {
   _resultTemplate() {
     if (!this._result) return "";
     const blocked = this._result.decision === "blocked";
-    const status = blocked ? "Nicht bereit" : "Bereit zur Übernahme";
+    const status = blocked ? "Nicht bereit" : "Bereit zur Prüfung";
     const findings = (this._result.findings || []).map((finding) => `
       <li class="finding ${finding.severity}">
         <span>${finding.severity === "error" ? "!" : finding.severity === "warning" ? "!" : "i"}</span>
