@@ -62,8 +62,8 @@ data:
 ```
 
 The action returns the source and target metadata, their hourly time ranges,
-and findings such as an overlap, a gap, a statistic-type mismatch, or a unit
-conversion requirement. A `ready_for_review` result is only an analysis
+and findings such as an incorrect source/target order, an overlap, a gap, a
+statistic-type mismatch, or a unit conversion requirement. A `ready_for_review` result is only an analysis
 result; it never authorizes or performs a recorder change.
 
 ## Project principles
