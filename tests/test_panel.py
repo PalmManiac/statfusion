@@ -57,6 +57,8 @@ def test_sidebar_panel_is_packaged_with_analysis_and_merge_ui() -> None:
     assert "Analyse kopieren" in panel
     assert "navigator.clipboard.writeText" in panel
     assert "Die Analyse verändert keine Daten." in panel
+    assert 'const status = blocked ? "Nicht bereit" : "Bereit zur Prüfung";' in panel
+    assert 'entry.decision === "blocked" ? "Blockiert" : "Bereit zur Prüfung"' in panel
     assert "Letzte Prüfungen" in panel
     assert "in dieser Ansicht" in panel
     assert 'class="reuse-analysis"' in panel
@@ -79,5 +81,5 @@ def test_sidebar_panel_module_url_has_a_version_token() -> None:
     """Force browser clients to request each shipped panel revision."""
     constants = CONSTANTS_PATH.read_text(encoding="utf-8")
 
-    assert 'PANEL_JS_VERSION = "5"' in constants
+    assert 'PANEL_JS_VERSION = "6"' in constants
     assert 'statfusion-panel.js?v={PANEL_JS_VERSION}' in constants
