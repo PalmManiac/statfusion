@@ -7,8 +7,8 @@ REGISTRATION_PATH = Path("custom_components/statfusion/panel.py")
 CONSTANTS_PATH = Path("custom_components/statfusion/const.py")
 
 
-def test_sidebar_panel_is_packaged_with_read_only_analysis_ui() -> None:
-    """Keep the panel and its safe analysis contract available in releases."""
+def test_sidebar_panel_is_packaged_with_analysis_and_merge_ui() -> None:
+    """Keep the analysis and explicitly confirmed merge controls packaged."""
     panel = PANEL_PATH.read_text(encoding="utf-8")
 
     assert 'customElements.define("statfusion-panel", StatFusionPanel)' in panel
@@ -26,7 +26,14 @@ def test_sidebar_panel_is_packaged_with_read_only_analysis_ui() -> None:
     assert 'id="statistic-search"' in panel
     assert "Statistik suchen" in panel
     assert "Übernahmeplan zur Prüfung" in panel
-    assert "Eine Datenübernahme ist noch nicht verfügbar." in panel
+    assert 'service: "merge"' in panel
+    assert 'id="backup-confirmed"' in panel
+    assert 'id="warnings-confirmed"' in panel
+    assert 'id="merge-confirmed"' in panel
+    assert 'id="merge"' in panel
+    assert "Übernahme abgeschlossen" in panel
+    assert "Die Quelle und bereits vorhandene Zielstunden bleiben unverändert." in panel
+    assert "mögliche Sprünge bei kumulativen Werten" in panel
     assert "vollständige Home-Assistant-Sicherung" in panel
     assert "Zeitlicher Übergang" in panel
     assert "Zwischen Quelle und Ziel liegt eine Zeitlücke" in panel
@@ -62,5 +69,5 @@ def test_sidebar_panel_module_url_has_a_version_token() -> None:
     """Force browser clients to request each shipped panel revision."""
     constants = CONSTANTS_PATH.read_text(encoding="utf-8")
 
-    assert 'PANEL_JS_VERSION = "2"' in constants
+    assert 'PANEL_JS_VERSION = "3"' in constants
     assert 'statfusion-panel.js?v={PANEL_JS_VERSION}' in constants

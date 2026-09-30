@@ -1,8 +1,7 @@
 analyze:
   name: Analyze a statistics merge
   description: >-
-    Analyze two long-term statistics as a possible future merge. This action is
-    read-only and never modifies Home Assistant recorder data.
+    Analyze two long-term statistics without changing recorder data.
   fields:
     source_statistic_id:
       name: Source statistic ID
@@ -16,3 +15,41 @@ analyze:
       required: true
       selector:
         text:
+merge:
+  name: Merge hourly statistics
+  description: >-
+    Copy compatible source long-term statistics into the target. Existing source
+    and target rows are preserved. A full Home Assistant backup, review of
+    warnings, and explicit confirmation are required. Overlapping timestamps and
+    unit conversions are blocked.
+  fields:
+    source_statistic_id:
+      name: Source statistic ID
+      description: The older long-term statistic whose hourly rows will be copied.
+      required: true
+      selector:
+        text:
+    target_statistic_id:
+      name: Target statistic ID
+      description: The statistic that will receive the missing hourly rows.
+      required: true
+      selector:
+        text:
+    backup_confirmed:
+      name: Full backup created
+      description: Confirm that a full Home Assistant backup exists.
+      required: true
+      selector:
+        boolean:
+    warnings_confirmed:
+      name: Warnings reviewed
+      description: Confirm that all analysis warnings have been reviewed.
+      required: true
+      selector:
+        boolean:
+    confirm:
+      name: Confirm merge
+      description: Confirm the selected source and target and start the merge.
+      required: true
+      selector:
+        boolean:

@@ -1,5 +1,6 @@
 """Tests for StatFusion's pure read-only merge analysis."""
 
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
 from custom_components.statfusion.analyzer import analyze_merge
@@ -25,6 +26,7 @@ def _snapshot(
         first=first,
         last=last,
         sample_count=24 if first else 0,
+        mean_type="arithmetic" if has_mean else "0",
     )
 
 
@@ -85,7 +87,7 @@ def test_incompatible_statistic_types_are_blocked() -> None:
     assert "statistic_type_mismatch" in _finding_codes(analysis)
 
 
-def test_convertible_units_need_review_but_are_not_silently_rejected() -> None:
+def test_different_units_block_merge_without_conversion() -> None:
     source = _snapshot("sensor.old_energy", unit="Wh")
     target = _snapshot(
         "sensor.new_energy",
@@ -96,8 +98,26 @@ def test_convertible_units_need_review_but_are_not_silently_rejected() -> None:
 
     analysis = analyze_merge(source, target)
 
-    assert analysis.decision is AnalysisDecision.READY_FOR_REVIEW
+    assert analysis.decision is AnalysisDecision.BLOCKED
     assert "unit_conversion_required" in _finding_codes(analysis)
+
+
+def test_different_mean_calculations_block_merge() -> None:
+    source = _snapshot("sensor.old_temperature", has_mean=True, has_sum=False)
+    target = _snapshot(
+        "sensor.new_temperature",
+        first=source.last + timedelta(hours=1),
+        last=source.last + timedelta(hours=24),
+        has_mean=True,
+        has_sum=False,
+    )
+    source = replace(source, mean_type="arithmetic")
+    target = replace(target, mean_type="circular")
+
+    analysis = analyze_merge(source, target)
+
+    assert analysis.decision is AnalysisDecision.BLOCKED
+    assert "statistic_mean_type_mismatch" in _finding_codes(analysis)
 
 
 def test_missing_statistics_are_blocked() -> None:
@@ -147,3 +167,22 @@ def test_matching_energy_flows_do_not_create_a_semantic_warning() -> None:
     )
 
     assert "energy_flow_mismatch" not in _finding_codes(analyze_merge(source, target))
+
+
+def test_sum_statistics_warn_about_different_cumulative_baselines() -> None:
+    source = _snapshot("sensor.old_energy")
+    target = _snapshot(
+        "sensor.new_energy",
+        first=source.last + timedelta(hours=1),
+        last=source.last + timedelta(hours=24),
+    )
+
+    analysis = analyze_merge(source, target)
+
+    finding = next(
+        finding
+        for finding in analysis.findings
+        if finding.code == "sum_baseline_discontinuity"
+    )
+    assert finding.severity.value == "warning"
+    assert analysis.decision is AnalysisDecision.READY_FOR_REVIEW

@@ -1,4 +1,4 @@
-"""Pure compatibility checks for a future statistics merge."""
+"""Pure compatibility checks for a long-term statistics merge."""
 
 from __future__ import annotations
 
@@ -23,9 +23,8 @@ def analyze_merge(
 ) -> MergeAnalysis:
     """Produce a read-only compatibility analysis for source and target.
 
-    The function intentionally describes only whether a later merge warrants
-    review. It neither calculates replacement statistics nor writes to the
-    recorder.
+    It checks whether a merge can safely append source rows to the target. It
+    does not calculate replacement statistics or write to the recorder.
     """
     findings: list[AnalysisFinding] = []
 
@@ -47,6 +46,16 @@ def analyze_merge(
         _check_units(source, target, findings)
         _check_energy_flow(source, target, findings)
         _check_time_range(source, target, findings)
+        if source.has_sum:
+            findings.append(
+                AnalysisFinding(
+                    "sum_baseline_discontinuity",
+                    FindingSeverity.WARNING,
+                    "Cumulative values are copied as recorded. Different source "
+                    "and target baselines may appear as a visible jump; values "
+                    "are not adjusted or added together.",
+                )
+            )
 
     decision = (
         AnalysisDecision.BLOCKED
@@ -93,13 +102,21 @@ def _check_shape_match(
     target: StatisticSnapshot,
     findings: list[AnalysisFinding],
 ) -> None:
-    """Require the same statistics columns for a future merge."""
+    """Require the same statistic columns and mean calculation method."""
     if (source.has_mean, source.has_sum) != (target.has_mean, target.has_sum):
         findings.append(
             _error(
                 "statistic_type_mismatch",
                 "Source and target use different statistic types and cannot be "
                 "combined safely.",
+            )
+        )
+    elif source.mean_type != target.mean_type:
+        findings.append(
+            _error(
+                "statistic_mean_type_mismatch",
+                "Source and target use different mean calculation methods and "
+                "cannot be merged safely.",
             )
         )
 
@@ -116,9 +133,9 @@ def _check_units(
         findings.append(
             AnalysisFinding(
                 "unit_conversion_required",
-                FindingSeverity.WARNING,
-                "Source and target use different units in the same unit class. A "
-                "future merge would need a separately validated unit conversion.",
+                FindingSeverity.ERROR,
+                "Source and target use different units. The merge cannot preserve "
+                "recorded values unchanged without unit conversion.",
             )
         )
         return
@@ -139,7 +156,7 @@ def _check_energy_flow(
 
     Entity names are not authoritative metadata, so this stays a warning. It
     prevents an otherwise technically compatible comparison from looking like
-    an unqualified future merge candidate.
+    an unqualified merge candidate.
     """
     source_flow = _energy_flow_for(source.statistic_id)
     target_flow = _energy_flow_for(target.statistic_id)
@@ -151,7 +168,7 @@ def _check_energy_flow(
             "energy_flow_mismatch",
             FindingSeverity.WARNING,
             "Source and target appear to describe opposing energy flows. Review "
-            "their meaning before any future merge.",
+            "their meaning before the merge.",
         )
     )
 
@@ -201,7 +218,7 @@ def _check_time_range(
                 "time_range_gap",
                 FindingSeverity.WARNING,
                 "There is a gap between the source and target statistics ranges. "
-                "Review the gap before any future merge.",
+                "Review the gap before the merge.",
             )
         )
         return

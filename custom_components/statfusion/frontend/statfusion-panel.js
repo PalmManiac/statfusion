@@ -12,7 +12,9 @@ const FINDING_MESSAGES = {
   source_statistic_type_unsupported: "Die Quellstatistik enthält weder Summen- noch Mittelwertdaten.",
   target_statistic_type_unsupported: "Die Zielstatistik enthält weder Summen- noch Mittelwertdaten.",
   statistic_type_mismatch: "Quelle und Ziel verwenden unterschiedliche Datenformen und können nicht sicher zusammengeführt werden.",
-  unit_conversion_required: "Quelle und Ziel verwenden unterschiedliche, aber umrechenbare Einheiten. Eine spätere Übernahme müsste die Umrechnung gesondert prüfen.",
+  unit_conversion_required: "Quelle und Ziel verwenden unterschiedliche Einheiten. Die Übernahme ist blockiert, damit keine Umrechnung oder Wertänderung erfolgt.",
+  statistic_mean_type_mismatch: "Quelle und Ziel verwenden unterschiedliche Mittelwertverfahren.",
+  sum_baseline_discontinuity: "Kumulative Werte werden unverändert kopiert. Unterschiedliche Ausgangswerte können als sichtbarer Sprung erscheinen; Werte werden weder angepasst noch addiert.",
   unit_mismatch: "Quelle und Ziel verwenden nicht passende oder unbekannte Einheiten.",
   energy_flow_mismatch: "Quelle und Ziel scheinen entgegengesetzte Energieflüsse zu beschreiben. Prüfe ihre Bedeutung vor einer späteren Übernahme.",
   time_range_target_starts_before_source: "Das Ziel beginnt zeitlich vor der Quelle. Wähle die ältere Statistik als Quelle und die neuere als Ziel.",
@@ -25,6 +27,7 @@ const REVIEW_PLAN_STEPS = {
   energy_flow_mismatch: "Den Energiefluss von Quelle und Ziel fachlich bestätigen.",
   time_range_gap: "Die angezeigte Zeitlücke fachlich prüfen und dokumentieren.",
   unit_conversion_required: "Die erforderliche Einheitenumrechnung fachlich und technisch prüfen.",
+  sum_baseline_discontinuity: "Mögliche sichtbare Sprünge durch unterschiedliche Ausgangswerte berücksichtigen.",
 };
 
 class StatFusionPanel extends HTMLElement {
@@ -42,6 +45,9 @@ class StatFusionPanel extends HTMLElement {
     this._pickerRole = "";
     this._pickerQuery = "";
     this._analysisHistory = [];
+    this._mergeLoading = false;
+    this._mergeResult = null;
+    this._mergeError = "";
   }
 
   set hass(value) {
@@ -83,6 +89,8 @@ class StatFusionPanel extends HTMLElement {
     this._error = "";
     this._result = null;
     this._copyStatus = "";
+    this._mergeResult = null;
+    this._mergeError = "";
 
     if (!source || !target) {
       this._error = "Bitte wähle eine Quell- und eine Zielstatistik aus.";
@@ -142,6 +150,41 @@ class StatFusionPanel extends HTMLElement {
       </article>`;
   }
 
+  async _merge() {
+    const backupConfirmed = this.shadowRoot.querySelector("#backup-confirmed").checked;
+    const warningsConfirmed = this.shadowRoot.querySelector("#warnings-confirmed").checked;
+    const mergeConfirmed = this.shadowRoot.querySelector("#merge-confirmed").checked;
+    if (!backupConfirmed || !warningsConfirmed || !mergeConfirmed || !this._result || this._result.decision === "blocked") return;
+
+    this._mergeLoading = true;
+    this._mergeResult = null;
+    this._mergeError = "";
+    this._render();
+    try {
+      const response = await this._hass.connection.sendMessagePromise({
+        type: "call_service",
+        domain: "statfusion",
+        service: "merge",
+        service_data: {
+          source_statistic_id: this._source,
+          target_statistic_id: this._target,
+          confirm: true,
+          backup_confirmed: true,
+          warnings_confirmed: true,
+        },
+        return_response: true,
+      });
+      this._mergeResult = response.response !== undefined
+        ? response.response
+        : (response.service_response !== undefined ? response.service_response : response);
+    } catch (error) {
+      this._mergeError = "Die Übernahme wurde blockiert oder konnte nicht bestätigt werden. Prüfe die Hinweise und Recorder-Protokolle, bevor du es erneut versuchst.";
+    } finally {
+      this._mergeLoading = false;
+      this._render();
+    }
+  }
+
   _rememberAnalysis() {
     if (!this._result || !this._source || !this._target) return;
     const entry = {
@@ -172,7 +215,7 @@ class StatFusionPanel extends HTMLElement {
         <div class="history-list">${this._analysisHistory.map((entry, index) => `
           <article class="history-entry ${entry.decision === "blocked" ? "blocked" : "ready"}">
             <div><strong>${escapeHtml(entry.source)}</strong><span>→</span><strong>${escapeHtml(entry.target)}</strong></div>
-            <div class="history-actions"><span>${entry.decision === "blocked" ? "Blockiert" : "Zur Prüfung bereit"}</span><button type="button" class="reuse-analysis" data-history-index="${index}">Auswahl übernehmen</button></div>
+            <div class="history-actions"><span>${entry.decision === "blocked" ? "Blockiert" : "Zur Übernahme bereit"}</span><button type="button" class="reuse-analysis" data-history-index="${index}">Auswahl übernehmen</button></div>
           </article>`).join("")}</div>
       </details>`;
   }
@@ -285,7 +328,7 @@ class StatFusionPanel extends HTMLElement {
   _resultTemplate() {
     if (!this._result) return "";
     const blocked = this._result.decision === "blocked";
-    const status = blocked ? "Nicht bereit" : "Bereit zur Prüfung";
+    const status = blocked ? "Nicht bereit" : "Bereit zur Übernahme";
     const findings = (this._result.findings || []).map((finding) => `
       <li class="finding ${finding.severity}">
         <span>${finding.severity === "error" ? "!" : finding.severity === "warning" ? "!" : "i"}</span>
@@ -311,6 +354,7 @@ class StatFusionPanel extends HTMLElement {
               ${this._statisticCard("Ziel", this._result.target, "target")}
             </div>
             ${this._reviewPlanTemplate(blocked)}
+            ${this._mergeTemplate(blocked)}
           </div>
         </div>
       </section>`;
@@ -332,15 +376,32 @@ class StatFusionPanel extends HTMLElement {
     const steps = [
       ...new Set(warningSteps),
       "Die fachliche Zuordnung von Quelle und Ziel bestätigen.",
-      "Vor einer späteren Übernahme eine vollständige Home-Assistant-Sicherung erstellen.",
-      "Eine spätere Datenübernahme separat prüfen, bestätigen und validieren.",
     ];
     return `
       <details class="review-plan" ${warningSteps.length ? "open" : ""}>
         <summary><span><span class="eyebrow">Vorschau</span>Übernahmeplan zur Prüfung</span><span>${warningSteps.length ? "Hinweise prüfen" : "Vorbereitung"}</span></summary>
-        <p>Dieser Plan beschreibt nur die notwendigen Vorbereitungen. Eine Datenübernahme ist noch nicht verfügbar.</p>
+        <p>Die Übernahme kopiert die Quellstunden unverändert ins Ziel. Quellwerte und bestehende Zielstunden bleiben erhalten.</p>
         <ol>${steps.map((step) => `<li>${escapeHtml(step)}</li>`).join("")}</ol>
       </details>`;
+  }
+
+  _mergeTemplate(blocked) {
+    if (blocked || !this._result || this._mergeResult) {
+      if (this._mergeResult) {
+        return `<section class="merge-result success"><strong>Übernahme abgeschlossen</strong><p>${escapeHtml(this._mergeResult.summary || "Die Recorder-Prüfung wurde abgeschlossen.")}</p><p>Übernommene Stunden: ${Number(this._mergeResult.imported_hours) || 0}</p></section>`;
+      }
+      return "";
+    }
+    return `
+      <section class="merge-confirmation">
+        <span class="eyebrow">Letzter Schritt</span><h2>Stundenwerte übernehmen</h2>
+        <p>StatFusion ergänzt ausschließlich fehlende Stunden im Ziel. Die Quelle und bereits vorhandene Zielstunden bleiben unverändert. Werte werden nicht addiert oder umgerechnet.</p>
+        <label class="confirm-check"><input id="backup-confirmed" type="checkbox"><span>Ich habe vor der Übernahme eine vollständige Home-Assistant-Sicherung erstellt.</span></label>
+        <label class="confirm-check"><input id="warnings-confirmed" type="checkbox"><span>Ich habe alle Warnhinweise geprüft, insbesondere mögliche Sprünge bei kumulativen Werten.</span></label>
+        <label class="confirm-check"><input id="merge-confirmed" type="checkbox"><span>Ich bestätige die Zuordnung und möchte die angezeigten Quellstunden ins Ziel kopieren.</span></label>
+        <button id="merge" type="button" ${this._mergeLoading ? "disabled" : ""}>${this._mergeLoading ? "Recorder übernimmt …" : "Stundenwerte übernehmen"}</button>
+        ${this._mergeError ? `<p class="merge-error" role="alert">${escapeHtml(this._mergeError)}</p>` : ""}
+      </section>`;
   }
 
   _render() {
@@ -367,13 +428,14 @@ class StatFusionPanel extends HTMLElement {
         .timeline { background:var(--secondary-background-color); border:1px solid var(--divider-color); border-radius:9px; margin-top:20px; padding:16px; }.timeline-heading { display:flex; flex-direction:column; gap:4px; }.timeline-heading strong { font-size:17px; }.timeline-track { align-items:center; display:grid; grid-template-columns:minmax(0, 1fr) 54px minmax(0, 1fr); margin-top:16px; }.timeline-segment { background:#0878d1; border-radius:6px; color:#fff; font-size:13px; font-weight:700; padding:10px 12px; text-align:center; }.timeline-segment.target { background:var(--accent-color, #00a7d8); }.timeline-connector { background:var(--primary-color); height:4px; }.timeline.gap .timeline-connector { background:var(--warning-color, #f6a700); }.timeline.overlap .timeline-connector,.timeline.reversed .timeline-connector { background:var(--error-color); }.timeline-details { display:grid; gap:12px; grid-template-columns:1fr 1.25fr 1fr; margin-top:13px; }.timeline-details div { display:grid; gap:3px; }.timeline-details div:last-child { text-align:right; }.timeline-details span { color:var(--secondary-text-color); font-size:12px; }.timeline-details strong { font-size:13px; }.timeline-relation { text-align:center; }.timeline-relation strong { font-family:var(--primary-font-family, sans-serif); }
         .findings { display:grid; gap:8px; list-style:none; margin:20px 0 0; padding:0; }.finding { align-items:flex-start; background:var(--secondary-background-color); border-radius:8px; display:flex; gap:10px; padding:11px; }.finding span { align-items:center; background:var(--primary-color); border-radius:50%; color:white; display:inline-flex; flex:0 0 19px; font-size:12px; font-weight:700; height:19px; justify-content:center; }.finding.error span { background:var(--error-color); }.finding.warning span { background:var(--warning-color, #f6a700); }
         .review-plan { background:var(--secondary-background-color); border-left:3px solid #0878d1; border-radius:8px; padding:0 14px; }.review-plan.blocked-plan { border-left-color:var(--error-color); padding:14px; }.review-plan h2 { font-size:18px; margin-top:4px; }.review-plan p { color:var(--secondary-text-color); margin-top:0; }.review-plan ol { display:grid; gap:7px; margin:0; padding:11px 0 14px 21px; }.review-plan li { padding-left:3px; }.review-plan > p { border-top:1px solid var(--divider-color); padding-top:11px; }
+        .merge-confirmation,.merge-result { background:var(--secondary-background-color); border:1px solid var(--divider-color); border-left:3px solid #0878d1; border-radius:9px; padding:14px; }.merge-confirmation h2 { font-size:18px; margin-top:4px; }.merge-confirmation > p,.merge-result p { color:var(--secondary-text-color); line-height:1.4; margin-top:8px; }.confirm-check { align-items:flex-start; color:var(--primary-text-color); display:flex; font-size:13px; font-weight:500; gap:9px; margin-top:12px; }.confirm-check input { accent-color:#0878d1; flex:0 0 auto; margin:2px 0 0; width:auto; }.merge-confirmation button { background:#0878d1; border:0; border-radius:8px; color:white; cursor:pointer; font:inherit; font-weight:700; margin-top:14px; padding:10px 14px; }.merge-confirmation button:disabled { cursor:wait; opacity:.65; }.merge-result.success { border-left-color:var(--success-color, #2e7d32); }.merge-result strong { color:var(--success-color, #2e7d32); }.merge-error { color:var(--error-color); }
         .picker-backdrop { align-items:center; background:rgb(0 0 0 / 35%); display:flex; inset:0; justify-content:center; padding:20px; position:fixed; z-index:10; }.picker { background:var(--card-background-color); border:1px solid var(--divider-color); border-radius:12px; box-shadow:0 16px 40px rgb(0 0 0 / 28%); max-width:660px; padding:22px; width:100%; }.picker-heading { align-items:flex-start; display:flex; justify-content:space-between; margin-bottom:17px; }.close-picker { background:transparent; border:0; color:var(--secondary-text-color); cursor:pointer; font-size:28px; line-height:28px; padding:0 5px; }.picker-count { color:var(--secondary-text-color); font-size:13px; margin:11px 0; }.picker-options { border:1px solid var(--divider-color); border-radius:8px; max-height:420px; overflow:auto; }.picker-option { background:transparent; border:0; border-bottom:1px solid var(--divider-color); color:var(--primary-text-color); cursor:pointer; display:flex; font-family:var(--code-font-family, monospace); font-size:14px; font-weight:400; justify-content:space-between; padding:13px; text-align:left; width:100%; }.picker-option:hover { background:var(--secondary-background-color); }.picker-option span:last-child { color:#0878d1; font-family:var(--primary-font-family, sans-serif); font-size:12px; font-weight:700; }.picker-option:last-child { border-bottom:0; }.empty { color:var(--secondary-text-color); margin:0; padding:18px; }
         @media (max-width:820px) { .result-layout { grid-template-columns:1fr; }.result-layout .stat-grid { grid-template-columns:1fr 1fr; }.result-layout dl { grid-template-columns:1fr; } }
         @media (max-width:680px) { main { padding:18px 14px 30px; } header,.selection { display:block; } header .chip { display:inline-block; margin-top:14px; } .result-heading,.history-entry { align-items:flex-start; flex-direction:column; gap:10px; }.result-actions { align-items:flex-end; flex-direction:column; } .history-actions { width:100%; }.history-actions > span { flex:1; }.arrow { display:none; } label + .arrow + label { margin-top:14px; }.assessment-grid,.stat-grid,.timeline-details,.result-layout .stat-grid { grid-template-columns:1fr; }.timeline-details div:last-child,.timeline-relation { text-align:left; } .workspace,.result { padding:14px; } }
       </style>
       <main>
         <header>
-          <div><h1>Statistiken zusammenführen</h1><p class="subtitle">Prüfe zwei Langzeitstatistiken, bevor später Daten übernommen werden.</p></div>
+          <div><h1>Statistiken zusammenführen</h1><p class="subtitle">Prüfe zwei Langzeitstatistiken und übernimm freigegebene Stundenwerte nach Bestätigung.</p></div>
           <span class="chip">Analyse</span>
         </header>
         <section class="workspace">
@@ -394,6 +456,20 @@ class StatFusionPanel extends HTMLElement {
     this.shadowRoot.querySelector("#analyze").addEventListener("click", () => this._analyze());
     const copyResult = this.shadowRoot.querySelector("#copy-result");
     if (copyResult) copyResult.addEventListener("click", () => this._copyResult());
+    const mergeButton = this.shadowRoot.querySelector("#merge");
+    if (mergeButton) mergeButton.addEventListener("click", () => this._merge());
+    const backupCheck = this.shadowRoot.querySelector("#backup-confirmed");
+    const warningsCheck = this.shadowRoot.querySelector("#warnings-confirmed");
+    const mergeCheck = this.shadowRoot.querySelector("#merge-confirmed");
+    if (mergeButton && backupCheck && warningsCheck && mergeCheck) {
+      const syncMergeButton = () => {
+        mergeButton.disabled = this._mergeLoading || !backupCheck.checked || !warningsCheck.checked || !mergeCheck.checked;
+      };
+      backupCheck.addEventListener("change", syncMergeButton);
+      warningsCheck.addEventListener("change", syncMergeButton);
+      mergeCheck.addEventListener("change", syncMergeButton);
+      syncMergeButton();
+    }
     this.shadowRoot.querySelectorAll(".reuse-analysis").forEach((button) => {
       button.addEventListener("click", () => this._reuseAnalysis(this._analysisHistory[button.dataset.historyIndex]));
     });

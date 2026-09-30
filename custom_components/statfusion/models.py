@@ -1,4 +1,4 @@
-"""Domain models for a read-only statistics merge analysis."""
+"""Domain models for long-term statistics analysis and transfer."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ class FindingSeverity(StrEnum):
 
 
 class AnalysisDecision(StrEnum):
-    """Possible outcomes of a read-only merge analysis."""
+    """Possible outcomes of a statistics merge analysis."""
 
     BLOCKED = "blocked"
     READY_FOR_REVIEW = "ready_for_review"
@@ -34,6 +34,7 @@ class StatisticSnapshot:
     first: datetime | None
     last: datetime | None
     sample_count: int
+    mean_type: str = "none"
 
     def as_dict(self) -> dict[str, object]:
         """Return a JSON-ready snapshot."""
@@ -62,7 +63,7 @@ class AnalysisFinding:
 
 @dataclass(frozen=True, slots=True)
 class MergeAnalysis:
-    """A safe, read-only proposal for a future statistics merge."""
+    """The findings from a statistics merge analysis."""
 
     source: StatisticSnapshot
     target: StatisticSnapshot
@@ -89,6 +90,7 @@ def _summary_for(decision: AnalysisDecision) -> str:
             "compatible. No recorder data was changed."
         )
     return (
-        "The selected statistics can be reviewed as a future merge candidate. "
+        "The selected statistics passed the technical checks and are ready for "
+        "explicit confirmation. "
         "No recorder data was changed."
     )
