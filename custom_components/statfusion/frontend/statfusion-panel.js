@@ -30,6 +30,152 @@ const REVIEW_PLAN_STEPS = {
   sum_baseline_discontinuity: "Mögliche sichtbare Sprünge durch unterschiedliche Ausgangswerte berücksichtigen.",
 };
 
+const EN_TRANSLATIONS = {
+  "Quelle und Ziel müssen unterschiedliche Statistiken sein.": "Source and target must be different statistics.",
+  "Die Quellstatistik enthält keine stündlichen Langzeitstatistiken.": "The source has no hourly long-term statistics.",
+  "Die Zielstatistik enthält keine stündlichen Langzeitstatistiken.": "The target has no hourly long-term statistics.",
+  "Die Quellstatistik enthält weder Summen- noch Mittelwertdaten.": "The source contains neither sum nor mean data.",
+  "Die Zielstatistik enthält weder Summen- noch Mittelwertdaten.": "The target contains neither sum nor mean data.",
+  "Quelle und Ziel verwenden unterschiedliche Mittelwertverfahren.": "Source and target use different mean calculation methods.",
+  "Quelle und Ziel verwenden nicht passende oder unbekannte Einheiten.": "Source and target use incompatible or unknown units.",
+  "Die Quelle endet unmittelbar vor Beginn des Ziels.": "The source ends immediately before the target starts.",
+  "Quelle und Ziel verwenden unterschiedliche Datenformen und können nicht sicher zusammengeführt werden.": "Source and target use different data types and cannot be merged safely.",
+  "Quelle und Ziel verwenden unterschiedliche Einheiten. Die Übernahme ist blockiert, damit keine Umrechnung oder Wertänderung erfolgt.": "Source and target use different units. The merge is blocked to prevent conversions or value changes.",
+  "Kumulative Werte werden unverändert kopiert. Unterschiedliche Ausgangswerte können als sichtbarer Sprung erscheinen; Werte werden weder angepasst noch addiert.": "Cumulative values are copied unchanged. Different starting values may create a visible jump; values are neither adjusted nor added together.",
+  "Quelle und Ziel scheinen entgegengesetzte Energieflüsse zu beschreiben. Prüfe ihre Bedeutung vor einer späteren Übernahme.": "Source and target appear to describe opposite energy flows. Review their meaning before merging.",
+  "Das Ziel beginnt zeitlich vor der Quelle. Wähle die ältere Statistik als Quelle und die neuere als Ziel.": "The target starts before the source. Choose the older statistic as the source and the newer one as the target.",
+  "Quelle und Ziel enthalten überlappende Zeiträume in der Langzeitstatistik.": "The source and target long-term statistics have overlapping time ranges.",
+  "Zwischen Quelle und Ziel besteht eine Zeitlücke. Prüfe die Lücke vor einer späteren Übernahme.": "There is a time gap between the source and target. Review the gap before merging.",
+  "Den Energiefluss von Quelle und Ziel fachlich bestätigen.": "Confirm that the source and target describe the intended energy flow.",
+  "Die angezeigte Zeitlücke fachlich prüfen und dokumentieren.": "Review and document the displayed time gap.",
+  "Die erforderliche Einheitenumrechnung fachlich und technisch prüfen.": "Review the required unit conversion.",
+  "Mögliche sichtbare Sprünge durch unterschiedliche Ausgangswerte berücksichtigen.": "Account for possible visible jumps caused by different starting values.",
+  "Die verfügbaren Statistiken konnten nicht geladen werden.": "Available statistics could not be loaded.",
+  "Bitte wähle eine Quell- und eine Zielstatistik aus.": "Choose a source and a target statistic.",
+  "Die Analyse konnte nicht ausgeführt werden. Bitte prüfe die Auswahl.": "The analysis could not be run. Check your selection.",
+  "Die Übernahme wurde blockiert oder konnte nicht bestätigt werden. Prüfe die Hinweise und Recorder-Protokolle, bevor du es erneut versuchst.": "The merge was blocked or could not be verified. Review the findings and Recorder logs before trying again.",
+  "Letzte Prüfungen": "Recent checks",
+  "Zur Übernahme bereit": "Ready to merge",
+  "Bereit zur Prüfung": "Ready for review",
+  "Die Analyse verändert keine Daten.": "The analysis does not change any data.",
+  "Keine Hinweise": "No findings",
+  "Status:": "Status:",
+  "Quelle:": "Source:",
+  "Ziel:": "Target:",
+  "Quelle Zeitraum:": "Source time range:",
+  "Ziel Zeitraum:": "Target time range:",
+  "Hinweise:": "Findings:",
+  "Analyse kopiert": "Analysis copied",
+  "Kopieren nicht möglich": "Could not copy",
+  "Nicht bereit": "Not ready",
+  "Überlappung": "Overlap",
+  "Zeitlücke": "Time gap",
+  "Direkter Übergang": "Direct transition",
+  "Falsche Reihenfolge": "Wrong order",
+  "Das Ziel beginnt vor der Quelle. Wähle die ältere Statistik als Quelle.": "The target starts before the source. Choose the older statistic as the source.",
+  "Quelle und Ziel schließen zeitlich direkt aneinander an.": "The source and target are directly adjacent in time.",
+  "Quelle und Ziel überlappen sich um": "The source and target overlap by",
+  "Zwischen Quelle und Ziel liegt eine Zeitlücke von": "There is a time gap of",
+  "StatFusion – Analyse": "StatFusion – Analysis",
+  "Die Prüfung verändert keine Daten.": "Checking does not change any data.",
+  "Quelle endet": "Source ends",
+  "Ziel beginnt": "Target begins",
+  "Zeitlicher Übergang": "Timeline",
+  "Auf einen Blick": "At a glance",
+  "Prüfstatus": "Check results",
+  "Technik": "Technical",
+  "Blockiert": "Blocked",
+  "Mindestens eine technische Voraussetzung fehlt.": "At least one technical requirement is not met.",
+  "Geprüft": "Passed",
+  "Keine blockierende technische Abweichung erkannt.": "No blocking technical issue found.",
+  "Energiefluss": "Energy flow",
+  "Prüfen": "Review",
+  "Quelle und Ziel könnten unterschiedliche Flüsse beschreiben.": "Source and target may describe different flows.",
+  "Kein Hinweis": "No issue found",
+  "Die Statistik-IDs liefern keinen gegenteiligen Flusshinweis.": "The statistic IDs do not indicate opposing flows.",
+  "Zeitraum": "Time range",
+  "Nicht verfügbar": "Unavailable",
+  "Für mindestens eine Statistik fehlen Zeitbereichsdaten.": "Time-range data is missing for at least one statistic.",
+  "Das Ziel muss nach der Quelle beginnen.": "The target must start after the source.",
+  "Die Zeiträume können nicht direkt aneinander anschließen.": "The time ranges cannot be joined directly.",
+  "Lücke": "Gap",
+  "Die Lücke muss vor einer späteren Übernahme geprüft werden.": "Review the gap before merging.",
+  "Quelle und Ziel schließen zeitlich direkt aneinander an.": "The source and target are directly adjacent in time.",
+  "Keine Änderungen": "No changes yet",
+  "Die ausgewählten Statistiken sind technisch nicht kompatibel. Es wurde kein Übernahmeplan erstellt und keine Recorder-Daten wurden verändert.": "The selected statistics are not technically compatible. No merge plan was created and no Recorder data was changed.",
+  "Die ausgewählten Statistiken können als möglicher Kandidat für eine spätere Übernahme geprüft werden. Es wurden keine Recorder-Daten verändert.": "The selected statistics passed the technical checks. No Recorder data has been changed yet.",
+  "Den angezeigten Hinweis vor einer späteren Übernahme prüfen.": "Review the displayed finding before merging.",
+  "Die fachliche Zuordnung von Quelle und Ziel bestätigen.": "Confirm that the source and target are assigned correctly.",
+  "Vorschau": "Preview",
+  "Übernahmeplan zur Prüfung": "Merge plan",
+  "Hinweise prüfen": "Review findings",
+  "Vorbereitung": "Preparation",
+  "Die Übernahme kopiert die Quellstunden unverändert ins Ziel. Quellwerte und bestehende Zielstunden bleiben erhalten.": "The merge copies source hours unchanged into the target. Source data and existing target hours are preserved.",
+  "Übernahme abgeschlossen": "Merge completed",
+  "Letzter Schritt": "Final step",
+  "Stundenwerte übernehmen": "Merge hourly values",
+  "StatFusion ergänzt ausschließlich fehlende Stunden im Ziel. Die Quelle und bereits vorhandene Zielstunden bleiben unverändert. Werte werden nicht addiert oder umgerechnet.": "StatFusion only adds missing hours to the target. The source and existing target hours remain unchanged. Values are not added together or converted.",
+  "Ich habe vor der Übernahme eine vollständige Home-Assistant-Sicherung erstellt.": "I have created a full Home Assistant backup before merging.",
+  "Ich habe alle Warnhinweise geprüft, insbesondere mögliche Sprünge bei kumulativen Werten.": "I have reviewed all warnings, especially possible jumps in cumulative values.",
+  "Ich bestätige die Zuordnung und möchte die angezeigten Quellstunden ins Ziel kopieren.": "I confirm the selection and want to copy the displayed source hours into the target.",
+  "Recorder übernimmt …": "Recorder is processing …",
+  "Prüfung läuft…": "Checking…",
+  "Kompatibilität prüfen": "Check compatibility",
+  "Statistiken zusammenführen": "Merge statistics",
+  "Prüfe zwei Langzeitstatistiken und übernimm freigegebene Stundenwerte nach Bestätigung.": "Check two long-term statistics, then merge approved hourly values after confirmation.",
+  "Analyse": "Analysis",
+  "Schritt 1": "Step 1",
+  "Statistiken auswählen": "Select statistics",
+  "Quelle": "Source",
+  "Ziel": "Target",
+  "Liste": "Browse",
+  "Summe": "Sum",
+  "Mittelwert": "Mean",
+  "Unbekannt": "Unknown",
+  "Datenform": "Data type",
+  "Einheit": "Unit",
+  "Stundenwerte": "Hourly values",
+  "Die Prüfung verändert keine Daten.": "Checking does not change any data.",
+  "Quellstatistik auswählen": "Select source statistic",
+  "Zielstatistik auswählen": "Select target statistic",
+  "Statistiken werden geladen oder stehen noch nicht zur Verfügung.": "Statistics are loading or are not available yet.",
+  "Statistiken verfügbar": "statistics available",
+  "erste 100 Treffer": "first 100 matches",
+  "Auswahl": "Selection",
+  "Auswahl schließen": "Close selection",
+  "Statistik suchen …": "Search statistics…",
+  "Keine passende Statistik gefunden.": "No matching statistic found.",
+  "Auswahl übernehmen": "Reuse selection",
+  "Möchtest du die ausgewählten Stundenwerte jetzt übernehmen?": "Do you want to merge the selected hourly values now?",
+  "Erstelle vor jeder Übernahme ein vollständiges Home-Assistant-Backup und prüfe, dass es verfügbar ist.": "Create a full Home Assistant backup before every merge and verify that it is available.",
+  "StatFusion verändert historische Recorder-Daten dauerhaft. Die Nutzung erfolgt auf eigene Gefahr. Für Datenverlust oder Folgeschäden übernimmt das Projektteam – soweit gesetzlich zulässig – keine Haftung.": "StatFusion permanently changes historical Recorder data. Use it at your own risk. To the extent permitted by law, the project team accepts no liability for data loss or consequential damages.",
+  "Warnung": "Warning",
+  "Übernommene Stunden:": "Hours merged:",
+  "Die Quellstatistik und vorhandenen Zielstunden bleiben erhalten.": "The source statistic and existing target hours are preserved.",
+  "Auswählen": "Select",
+  " in dieser Ansicht": " in this view",
+  " Stunden": " hours",
+  " Stunde": " hour",
+  " Tage": " days",
+  " Tag": " day",
+  "Warnung": "Warning",
+  "Erstelle vor jeder Übernahme ein vollständiges Home-Assistant-Backup und prüfe, dass es verfügbar ist.": "Create a full Home Assistant backup before every merge and make sure it is available.",
+  "StatFusion verändert historische Recorder-Daten dauerhaft. Die Nutzung erfolgt auf eigene Gefahr. Für Datenverlust oder Folgeschäden übernimmt das Projektteam – soweit gesetzlich zulässig – keine Haftung.": "StatFusion permanently changes historical Recorder data. Use it at your own risk. To the extent permitted by law, the project team accepts no liability for data loss or consequential damages.",
+  "Übernommene Stunden:": "Hours merged:",
+  "Die Quellstatistik und vorhandenen Zielstunden bleiben erhalten.": "The source statistic and existing target hours are preserved.",
+  "Die blockierenden Hinweise müssen zuerst geklärt werden. Es wurden keine Daten verändert.": "Resolve the blocking findings first. No data was changed.",
+  "Kein Übernahmeplan verfügbar": "No merge plan available",
+  "Sitzung": "Session",
+  "Analyse kopieren": "Copy analysis",
+  "Quelle Zeitraum:": "Source time range:",
+  "Ziel Zeitraum:": "Target time range:",
+  "Hinweise:": "Findings:",
+  "Warnungen": "Warnings",
+  "Ergebnis": "Result",
+  "Kompatibilität": "Compatibility",
+  "Stündliche Werte": "Hourly values",
+};
+
 class StatFusionPanel extends HTMLElement {
   constructor() {
     super();
@@ -51,15 +197,29 @@ class StatFusionPanel extends HTMLElement {
   }
 
   set hass(value) {
+    const previousLanguage = this._isEnglish();
     this._hass = value;
     if (!this._statistics.length && !this._statisticsLoading) {
       this._loadStatistics();
     }
-    if (!this.shadowRoot.innerHTML) this._render();
+    if (!this.shadowRoot.innerHTML || previousLanguage !== this._isEnglish()) this._render();
   }
 
   get hass() {
     return this._hass;
+  }
+
+  _isEnglish() {
+    const language = this._hass?.locale?.language || navigator.language || "de";
+    return language.toLowerCase().startsWith("en");
+  }
+
+  _localize(value) {
+    if (!this._isEnglish()) return value;
+    return Object.entries(EN_TRANSLATIONS).reduce(
+      (translated, [german, english]) => translated.replaceAll(german, english),
+      value,
+    );
   }
 
   async _loadStatistics() {
@@ -155,6 +315,7 @@ class StatFusionPanel extends HTMLElement {
     const warningsConfirmed = this.shadowRoot.querySelector("#warnings-confirmed").checked;
     const mergeConfirmed = this.shadowRoot.querySelector("#merge-confirmed").checked;
     if (!backupConfirmed || !warningsConfirmed || !mergeConfirmed || !this._result || this._result.decision === "blocked") return;
+    if (!window.confirm(this._localize("Möchtest du die ausgewählten Stundenwerte jetzt übernehmen?"))) return;
 
     this._mergeLoading = true;
     this._mergeResult = null;
@@ -226,7 +387,7 @@ class StatFusionPanel extends HTMLElement {
     const status = this._result.decision === "blocked" ? "Nicht bereit" : "Bereit zur Prüfung";
     const findings = (this._result.findings || [])
       .map((finding) => `- ${FINDING_MESSAGES[finding.code] || finding.message}`);
-    const text = [
+    const text = this._localize([
       "StatFusion – Analyse",
       `Status: ${status}`,
       `Quelle: ${this._result.source.statistic_id}`,
@@ -237,7 +398,7 @@ class StatFusionPanel extends HTMLElement {
       ...(findings.length ? findings : ["- Keine Hinweise"]),
       "",
       "Die Analyse verändert keine Daten.",
-    ].join("\n");
+    ].join("\n"));
 
     try {
       await navigator.clipboard.writeText(text);
@@ -388,7 +549,7 @@ class StatFusionPanel extends HTMLElement {
   _mergeTemplate(blocked) {
     if (blocked || !this._result || this._mergeResult) {
       if (this._mergeResult) {
-        return `<section class="merge-result success"><strong>Übernahme abgeschlossen</strong><p>${escapeHtml(this._mergeResult.summary || "Die Recorder-Prüfung wurde abgeschlossen.")}</p><p>Übernommene Stunden: ${Number(this._mergeResult.imported_hours) || 0}</p></section>`;
+        return `<section class="merge-result success"><strong>Übernahme abgeschlossen</strong><p>Die Quellstatistik und vorhandenen Zielstunden bleiben erhalten.</p><p>Übernommene Stunden: ${Number(this._mergeResult.imported_hours) || 0}</p></section>`;
       }
       return "";
     }
@@ -407,7 +568,7 @@ class StatFusionPanel extends HTMLElement {
   _render() {
     if (!this.shadowRoot) return;
     const options = this._statistics.map((id) => `<option value="${escapeHtml(id)}"></option>`).join("");
-    this.shadowRoot.innerHTML = `
+    const markup = `
       <style>
         :host { display:block; min-height:100%; color:var(--primary-text-color); background:var(--primary-background-color); font-family:var(--primary-font-family, sans-serif); }
         main { max-width:1240px; margin:0 auto; padding:22px 24px 36px; }
@@ -429,6 +590,7 @@ class StatFusionPanel extends HTMLElement {
         .findings { display:grid; gap:8px; list-style:none; margin:20px 0 0; padding:0; }.finding { align-items:flex-start; background:var(--secondary-background-color); border-radius:8px; display:flex; gap:10px; padding:11px; }.finding span { align-items:center; background:var(--primary-color); border-radius:50%; color:white; display:inline-flex; flex:0 0 19px; font-size:12px; font-weight:700; height:19px; justify-content:center; }.finding.error span { background:var(--error-color); }.finding.warning span { background:var(--warning-color, #f6a700); }
         .review-plan { background:var(--secondary-background-color); border-left:3px solid #0878d1; border-radius:8px; padding:0 14px; }.review-plan.blocked-plan { border-left-color:var(--error-color); padding:14px; }.review-plan h2 { font-size:18px; margin-top:4px; }.review-plan p { color:var(--secondary-text-color); margin-top:0; }.review-plan ol { display:grid; gap:7px; margin:0; padding:11px 0 14px 21px; }.review-plan li { padding-left:3px; }.review-plan > p { border-top:1px solid var(--divider-color); padding-top:11px; }
         .merge-confirmation,.merge-result { background:var(--secondary-background-color); border:1px solid var(--divider-color); border-left:3px solid #0878d1; border-radius:9px; padding:14px; }.merge-confirmation h2 { font-size:18px; margin-top:4px; }.merge-confirmation > p,.merge-result p { color:var(--secondary-text-color); line-height:1.4; margin-top:8px; }.confirm-check { align-items:flex-start; color:var(--primary-text-color); display:flex; font-size:13px; font-weight:500; gap:9px; margin-top:12px; }.confirm-check input { accent-color:#0878d1; flex:0 0 auto; margin:2px 0 0; width:auto; }.merge-confirmation button { background:#0878d1; border:0; border-radius:8px; color:white; cursor:pointer; font:inherit; font-weight:700; margin-top:14px; padding:10px 14px; }.merge-confirmation button:disabled { cursor:wait; opacity:.65; }.merge-result.success { border-left-color:var(--success-color, #2e7d32); }.merge-result strong { color:var(--success-color, #2e7d32); }.merge-error { color:var(--error-color); }
+        .safety-notice { background:color-mix(in srgb, var(--error-color, #c62828) 9%, var(--card-background-color)); border:1px solid color-mix(in srgb, var(--error-color, #c62828) 38%, var(--divider-color)); border-left:4px solid var(--error-color, #c62828); border-radius:9px; margin-bottom:14px; padding:13px 15px; }.safety-notice strong { color:var(--error-color, #c62828); display:block; }.safety-notice p { line-height:1.4; margin-top:5px; }.safety-notice p:last-child { font-weight:600; }
         .picker-backdrop { align-items:center; background:rgb(0 0 0 / 35%); display:flex; inset:0; justify-content:center; padding:20px; position:fixed; z-index:10; }.picker { background:var(--card-background-color); border:1px solid var(--divider-color); border-radius:12px; box-shadow:0 16px 40px rgb(0 0 0 / 28%); max-width:660px; padding:22px; width:100%; }.picker-heading { align-items:flex-start; display:flex; justify-content:space-between; margin-bottom:17px; }.close-picker { background:transparent; border:0; color:var(--secondary-text-color); cursor:pointer; font-size:28px; line-height:28px; padding:0 5px; }.picker-count { color:var(--secondary-text-color); font-size:13px; margin:11px 0; }.picker-options { border:1px solid var(--divider-color); border-radius:8px; max-height:420px; overflow:auto; }.picker-option { background:transparent; border:0; border-bottom:1px solid var(--divider-color); color:var(--primary-text-color); cursor:pointer; display:flex; font-family:var(--code-font-family, monospace); font-size:14px; font-weight:400; justify-content:space-between; padding:13px; text-align:left; width:100%; }.picker-option:hover { background:var(--secondary-background-color); }.picker-option span:last-child { color:#0878d1; font-family:var(--primary-font-family, sans-serif); font-size:12px; font-weight:700; }.picker-option:last-child { border-bottom:0; }.empty { color:var(--secondary-text-color); margin:0; padding:18px; }
         @media (max-width:820px) { .result-layout { grid-template-columns:1fr; }.result-layout .stat-grid { grid-template-columns:1fr 1fr; }.result-layout dl { grid-template-columns:1fr; } }
         @media (max-width:680px) { main { padding:18px 14px 30px; } header,.selection { display:block; } header .chip { display:inline-block; margin-top:14px; } .result-heading,.history-entry { align-items:flex-start; flex-direction:column; gap:10px; }.result-actions { align-items:flex-end; flex-direction:column; } .history-actions { width:100%; }.history-actions > span { flex:1; }.arrow { display:none; } label + .arrow + label { margin-top:14px; }.assessment-grid,.stat-grid,.timeline-details,.result-layout .stat-grid { grid-template-columns:1fr; }.timeline-details div:last-child,.timeline-relation { text-align:left; } .workspace,.result { padding:14px; } }
@@ -439,6 +601,7 @@ class StatFusionPanel extends HTMLElement {
           <span class="chip">Analyse</span>
         </header>
         <section class="workspace">
+          <aside class="safety-notice" role="alert"><strong>Warnung</strong><p>Erstelle vor jeder Übernahme ein vollständiges Home-Assistant-Backup und prüfe, dass es verfügbar ist.</p><p>StatFusion verändert historische Recorder-Daten dauerhaft. Die Nutzung erfolgt auf eigene Gefahr. Für Datenverlust oder Folgeschäden übernimmt das Projektteam – soweit gesetzlich zulässig – keine Haftung.</p></aside>
           <div class="workspace-title"><div><span class="eyebrow">Schritt 1</span><h2>Statistiken auswählen</h2></div></div>
           <div class="selection">
             <label>Quelle<span class="input-row"><input id="source" list="statistics" value="${escapeHtml(this._source)}" placeholder="sensor.alte_energie"><button class="picker-trigger" type="button" data-picker-role="source">Liste</button></span></label>
@@ -453,6 +616,7 @@ class StatFusionPanel extends HTMLElement {
         ${this._resultTemplate()}
       </main>
       ${this._pickerTemplate()}`;
+    this.shadowRoot.innerHTML = this._localize(markup);
     this.shadowRoot.querySelector("#analyze").addEventListener("click", () => this._analyze());
     const copyResult = this.shadowRoot.querySelector("#copy-result");
     if (copyResult) copyResult.addEventListener("click", () => this._copyResult());

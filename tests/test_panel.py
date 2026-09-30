@@ -35,6 +35,12 @@ def test_sidebar_panel_is_packaged_with_analysis_and_merge_ui() -> None:
     assert "Die Quelle und bereits vorhandene Zielstunden bleiben unverändert." in panel
     assert "mögliche Sprünge bei kumulativen Werten" in panel
     assert "vollständige Home-Assistant-Sicherung" in panel
+    assert "role=\"alert\"" in panel
+    assert "Die Nutzung erfolgt auf eigene Gefahr." in panel
+    assert "_isEnglish()" in panel
+    assert "EN_TRANSLATIONS" in panel
+    assert "I have created a full Home Assistant backup before merging." in panel
+    assert "window.confirm" in panel
     assert "Zeitlicher Übergang" in panel
     assert "Zwischen Quelle und Ziel liegt eine Zeitlücke" in panel
     assert "Quelle und Ziel überlappen sich" in panel
@@ -69,5 +75,5 @@ def test_sidebar_panel_module_url_has_a_version_token() -> None:
     """Force browser clients to request each shipped panel revision."""
     constants = CONSTANTS_PATH.read_text(encoding="utf-8")
 
-    assert 'PANEL_JS_VERSION = "3"' in constants
+    assert 'PANEL_JS_VERSION = "4"' in constants
     assert 'statfusion-panel.js?v={PANEL_JS_VERSION}' in constants

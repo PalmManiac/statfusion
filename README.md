@@ -77,8 +77,8 @@ normalize cumulative sums. Different cumulative baselines may therefore appear
 as a visible jump. A time gap or possible energy-flow mismatch also needs review
 before confirmation.
 
-The merge action is admin-only and also requires both explicit confirmations
-when called from Developer Tools:
+The merge action is admin-only and requires the backup, warning-review, and
+merge confirmations when called from Developer Tools:
 
 ```yaml
 action: statfusion.merge
@@ -88,6 +88,12 @@ data:
   backup_confirmed: true
   confirm: true
 ```
+
+The sidebar follows Home Assistant's selected language and supports German and
+English. It keeps a prominent backup and own-risk notice visible before
+selection and analysis. Before the merge, users must acknowledge the backup,
+review the warnings, confirm the source/target selection, and approve a final
+browser confirmation.
 
 ## Project principles
 
