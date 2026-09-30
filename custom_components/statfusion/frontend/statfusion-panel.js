@@ -591,9 +591,11 @@ class StatFusionPanel extends HTMLElement {
         .review-plan { background:var(--secondary-background-color); border-left:3px solid #0878d1; border-radius:8px; padding:0 14px; }.review-plan.blocked-plan { border-left-color:var(--error-color); padding:14px; }.review-plan h2 { font-size:18px; margin-top:4px; }.review-plan p { color:var(--secondary-text-color); margin-top:0; }.review-plan ol { display:grid; gap:7px; margin:0; padding:11px 0 14px 21px; }.review-plan li { padding-left:3px; }.review-plan > p { border-top:1px solid var(--divider-color); padding-top:11px; }
         .merge-confirmation,.merge-result { background:var(--secondary-background-color); border:1px solid var(--divider-color); border-left:3px solid #0878d1; border-radius:9px; padding:14px; }.merge-confirmation h2 { font-size:18px; margin-top:4px; }.merge-confirmation > p,.merge-result p { color:var(--secondary-text-color); line-height:1.4; margin-top:8px; }.confirm-check { align-items:flex-start; color:var(--primary-text-color); display:flex; font-size:13px; font-weight:500; gap:9px; margin-top:12px; }.confirm-check input { accent-color:#0878d1; flex:0 0 auto; margin:2px 0 0; width:auto; }.merge-confirmation button { background:#0878d1; border:0; border-radius:8px; color:white; cursor:pointer; font:inherit; font-weight:700; margin-top:14px; padding:10px 14px; }.merge-confirmation button:disabled { cursor:wait; opacity:.65; }.merge-result.success { border-left-color:var(--success-color, #2e7d32); }.merge-result strong { color:var(--success-color, #2e7d32); }.merge-error { color:var(--error-color); }
         .safety-notice { background:color-mix(in srgb, var(--error-color, #c62828) 9%, var(--card-background-color)); border:1px solid color-mix(in srgb, var(--error-color, #c62828) 38%, var(--divider-color)); border-left:4px solid var(--error-color, #c62828); border-radius:9px; margin-bottom:14px; padding:13px 15px; }.safety-notice strong { color:var(--error-color, #c62828); display:block; }.safety-notice p { line-height:1.4; margin-top:5px; }.safety-notice p:last-child { font-weight:600; }
-        .picker-backdrop { align-items:center; background:rgb(0 0 0 / 35%); display:flex; inset:0; justify-content:center; padding:20px; position:fixed; z-index:10; }.picker { background:var(--card-background-color); border:1px solid var(--divider-color); border-radius:12px; box-shadow:0 16px 40px rgb(0 0 0 / 28%); max-width:660px; padding:22px; width:100%; }.picker-heading { align-items:flex-start; display:flex; justify-content:space-between; margin-bottom:17px; }.close-picker { background:transparent; border:0; color:var(--secondary-text-color); cursor:pointer; font-size:28px; line-height:28px; padding:0 5px; }.picker-count { color:var(--secondary-text-color); font-size:13px; margin:11px 0; }.picker-options { border:1px solid var(--divider-color); border-radius:8px; max-height:420px; overflow:auto; }.picker-option { background:transparent; border:0; border-bottom:1px solid var(--divider-color); color:var(--primary-text-color); cursor:pointer; display:flex; font-family:var(--code-font-family, monospace); font-size:14px; font-weight:400; justify-content:space-between; padding:13px; text-align:left; width:100%; }.picker-option:hover { background:var(--secondary-background-color); }.picker-option span:last-child { color:#0878d1; font-family:var(--primary-font-family, sans-serif); font-size:12px; font-weight:700; }.picker-option:last-child { border-bottom:0; }.empty { color:var(--secondary-text-color); margin:0; padding:18px; }
+        dialog.picker { background-color:var(--card-background-color, var(--primary-background-color, #202124)); border:1px solid var(--divider-color, #555); border-radius:12px; box-shadow:0 20px 60px rgb(0 0 0 / 55%); box-sizing:border-box; color:var(--primary-text-color); inset:0; margin:auto; max-height:calc(100dvh - 40px); max-width:660px; overflow:hidden; padding:22px; position:fixed; width:calc(100% - 40px); }
+        dialog.picker::backdrop { background:rgb(0 0 0 / 70%); }
+        .picker-heading { align-items:flex-start; display:flex; justify-content:space-between; margin-bottom:17px; }.close-picker { background:transparent; border:0; color:var(--secondary-text-color); cursor:pointer; font-size:28px; line-height:28px; padding:0 5px; }.picker-count { color:var(--secondary-text-color); font-size:13px; margin:11px 0; }.picker-options { border:1px solid var(--divider-color); border-radius:8px; max-height:min(420px, calc(100dvh - 230px)); overflow:auto; }.picker-option { background:transparent; border:0; border-bottom:1px solid var(--divider-color); color:var(--primary-text-color); cursor:pointer; display:flex; font-family:var(--code-font-family, monospace); font-size:14px; font-weight:400; justify-content:space-between; padding:13px; text-align:left; width:100%; }.picker-option:hover { background:var(--secondary-background-color); }.picker-option span:last-child { color:#0878d1; font-family:var(--primary-font-family, sans-serif); font-size:12px; font-weight:700; }.picker-option:last-child { border-bottom:0; }.empty { color:var(--secondary-text-color); margin:0; padding:18px; }
         @media (max-width:820px) { .result-layout { grid-template-columns:1fr; }.result-layout .stat-grid { grid-template-columns:1fr 1fr; }.result-layout dl { grid-template-columns:1fr; } }
-        @media (max-width:680px) { main { padding:18px 14px 30px; } header,.selection { display:block; } header .chip { display:inline-block; margin-top:14px; } .result-heading,.history-entry { align-items:flex-start; flex-direction:column; gap:10px; }.result-actions { align-items:flex-end; flex-direction:column; } .history-actions { width:100%; }.history-actions > span { flex:1; }.arrow { display:none; } label + .arrow + label { margin-top:14px; }.assessment-grid,.stat-grid,.timeline-details,.result-layout .stat-grid { grid-template-columns:1fr; }.timeline-details div:last-child,.timeline-relation { text-align:left; } .workspace,.result { padding:14px; } }
+        @media (max-width:680px) { main { padding:18px 14px 30px; } header,.selection { display:block; } header .chip { display:inline-block; margin-top:14px; } .result-heading,.history-entry { align-items:flex-start; flex-direction:column; gap:10px; }.result-actions { align-items:flex-end; flex-direction:column; } .history-actions { width:100%; }.history-actions > span { flex:1; }.arrow { display:none; } label + .arrow + label { margin-top:14px; }.assessment-grid,.stat-grid,.timeline-details,.result-layout .stat-grid { grid-template-columns:1fr; }.timeline-details div:last-child,.timeline-relation { text-align:left; } .workspace,.result { padding:14px; } dialog.picker { padding:17px; width:calc(100% - 24px); } }
       </style>
       <main>
         <header>
@@ -617,6 +619,8 @@ class StatFusionPanel extends HTMLElement {
       </main>
       ${this._pickerTemplate()}`;
     this.shadowRoot.innerHTML = this._localize(markup);
+    const pickerDialog = this.shadowRoot.querySelector("#picker-dialog");
+    if (pickerDialog && !pickerDialog.open) pickerDialog.showModal();
     this.shadowRoot.querySelector("#analyze").addEventListener("click", () => this._analyze());
     const copyResult = this.shadowRoot.querySelector("#copy-result");
     if (copyResult) copyResult.addEventListener("click", () => this._copyResult());
@@ -661,10 +665,13 @@ class StatFusionPanel extends HTMLElement {
     });
     const closePicker = this.shadowRoot.querySelector("#close-picker");
     if (closePicker) closePicker.addEventListener("click", () => this._closePicker());
-    const backdrop = this.shadowRoot.querySelector("#picker-backdrop");
-    if (backdrop) {
-      backdrop.addEventListener("click", (event) => {
-        if (event.target === backdrop) this._closePicker();
+    if (pickerDialog) {
+      pickerDialog.addEventListener("cancel", (event) => {
+        event.preventDefault();
+        this._closePicker();
+      });
+      pickerDialog.addEventListener("click", (event) => {
+        if (event.target === pickerDialog) this._closePicker();
       });
     }
   }
@@ -703,14 +710,12 @@ class StatFusionPanel extends HTMLElement {
       ? "Statistiken werden geladen oder stehen noch nicht zur Verfügung."
       : `${this._statistics.length} Statistiken verfügbar${matches.length === 100 ? " · erste 100 Treffer" : ""}`;
     return `
-      <div class="picker-backdrop" id="picker-backdrop">
-        <section class="picker" role="dialog" aria-modal="true" aria-label="${title}">
+      <dialog class="picker" id="picker-dialog" aria-label="${title}">
           <div class="picker-heading"><div><span class="eyebrow">Auswahl</span><h2>${title}</h2></div><button class="close-picker" id="close-picker" type="button" aria-label="Auswahl schließen">×</button></div>
           <input id="statistic-search" value="${escapeHtml(this._pickerQuery)}" placeholder="Statistik suchen …" autocomplete="off">
           <p class="picker-count">${detail}</p>
           <div class="picker-options">${options || '<p class="empty">Keine passende Statistik gefunden.</p>'}</div>
-        </section>
-      </div>`;
+      </dialog>`;
   }
 }
 
