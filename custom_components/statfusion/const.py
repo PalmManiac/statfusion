@@ -10,4 +10,7 @@ SERVICE_ANALYZE = "analyze"
 
 PANEL_URL_PATH = DOMAIN
 PANEL_COMPONENT_NAME = "statfusion-panel"
-PANEL_JS_URL = "/statfusion-static/statfusion-panel.js"
+# Keep this token in step with frontend changes. A new URL guarantees that an
+# already-open Home Assistant frontend loads the updated custom panel module.
+PANEL_JS_VERSION = "2"
+PANEL_JS_URL = f"/statfusion-static/statfusion-panel.js?v={PANEL_JS_VERSION}"
