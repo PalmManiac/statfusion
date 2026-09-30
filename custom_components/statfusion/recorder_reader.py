@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
+from homeassistant.components.recorder import get_instance
 from homeassistant.components.recorder.statistics import (
     get_metadata,
     statistics_during_period,
@@ -20,7 +21,7 @@ async def async_read_statistic_snapshot(
     hass: HomeAssistant, statistic_id: str
 ) -> StatisticSnapshot:
     """Read metadata and hourly boundaries without modifying recorder data."""
-    return await hass.async_add_executor_job(
+    return await get_instance(hass).async_add_executor_job(
         _read_statistic_snapshot, hass, statistic_id
     )
 
