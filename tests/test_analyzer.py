@@ -57,6 +57,24 @@ def test_overlapping_ranges_are_blocked() -> None:
     assert "time_range_overlap" in _finding_codes(analysis)
 
 
+def test_target_that_starts_before_source_is_blocked() -> None:
+    source = _snapshot(
+        "sensor.new_energy",
+        first=datetime(2026, 2, 1, tzinfo=UTC),
+        last=datetime(2026, 2, 1, 23, tzinfo=UTC),
+    )
+    target = _snapshot(
+        "sensor.old_energy",
+        first=datetime(2026, 1, 1, tzinfo=UTC),
+        last=datetime(2026, 1, 1, 23, tzinfo=UTC),
+    )
+
+    analysis = analyze_merge(source, target)
+
+    assert analysis.decision is AnalysisDecision.BLOCKED
+    assert "time_range_target_starts_before_source" in _finding_codes(analysis)
+
+
 def test_incompatible_statistic_types_are_blocked() -> None:
     source = _snapshot("sensor.old_energy")
     target = _snapshot("sensor.new_temperature", has_mean=True, has_sum=False)

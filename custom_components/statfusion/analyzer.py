@@ -172,7 +172,19 @@ def _check_time_range(
 ) -> None:
     """Reject overlaps and make non-contiguous handoffs explicit."""
     assert source.last is not None
+    assert source.first is not None
     assert target.first is not None
+    if target.first <= source.first:
+        findings.append(
+            _error(
+                "time_range_target_starts_before_source",
+                "The target statistic starts before the source statistic. Select "
+                "the older statistic as the source and the newer statistic as "
+                "the target.",
+            )
+        )
+        return
+
     if target.first <= source.last:
         findings.append(
             _error(
