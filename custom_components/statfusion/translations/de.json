@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "StatFusion einrichten",
-        "description": "StatFusion ist bereit, Langzeitstatistiken zu analysieren. Diese erste Version verändert keine Statistiken und keine Recorder-Daten."
+        "description": "StatFusion analysiert Langzeitstatistiken und kann nach Sicherung und ausdrücklicher Bestätigung historische Stundenwerte übernehmen."
       }
     },
     "abort": {

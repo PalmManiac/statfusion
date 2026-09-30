@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Set up StatFusion",
-        "description": "StatFusion is ready to analyze long-term statistics. This initial version does not modify any statistics or recorder data."
+        "description": "StatFusion analyzes long-term statistics and can copy historical hourly values after a backup and explicit confirmation."
       }
     },
     "abort": {
