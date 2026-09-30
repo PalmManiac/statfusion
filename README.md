@@ -14,18 +14,17 @@ change.
 
 ## Current status
 
-The initial release is intentionally analysis-only. It will inspect a selected
-source and target, report their compatibility and time ranges, and prepare a
-human-readable migration plan. It does not modify Home Assistant statistics,
-statistics metadata, or the recorder database.
+StatFusion analyzes two long-term statistics and can copy the source's hourly
+history into the target after a full Home Assistant backup and explicit
+confirmation. The source is preserved. Existing target hours are preserved,
+and any timestamp overlap or unit conversion requirement blocks the operation.
 
 ## Planned first workflow
 
 1. Select a source entity and a target entity.
 2. Inspect statistic type, unit, time range, and possible overlap.
-3. Show a plan explaining whether a later merge could be safe.
-4. Require an explicit confirmation and a Home Assistant backup before any
-   future write feature is considered.
+3. Show gaps, cumulative-baseline jumps, and other review warnings.
+4. Copy only non-overlapping hourly rows without changing their values.
 
 ## Installation during development
 
@@ -33,8 +32,8 @@ Copy `custom_components/statfusion` into the `custom_components` directory of
 a Home Assistant development instance, then restart Home Assistant. Add
 **StatFusion** from **Settings → Devices & services**.
 
-The current scaffold creates no entities, has no background polling, and makes
-no recorder or database changes.
+StatFusion creates no entities and has no background polling. Historical data
+is only changed by the separate, administrator-only merge action.
 
 ## Sidebar analysis
 
@@ -52,7 +51,7 @@ history and the standard preparation plan can be expanded when needed.
 
 ## Analyze a possible merge
 
-The sidebar is the preferred way to run an analysis. The same read-only
+The sidebar is the preferred way to analyze and merge. The administrator-only
 `statfusion.analyze` action also remains available in Home Assistant's
 Developer Tools. Supply the older and newer statistic IDs:
 
@@ -63,19 +62,39 @@ data:
   target_statistic_id: sensor.new_energy
 ```
 
-The action returns the source and target metadata, their hourly time ranges,
-and findings such as an incorrect source/target order, an overlap, a gap, a
-statistic-type mismatch, or a unit conversion requirement. A `ready_for_review` result is only an analysis
-result; it never authorizes or performs a recorder change.
+The action returns metadata, time ranges, and compatibility findings. A
+`ready_for_review` result does not itself start a merge.
+
+## Merge historical statistics
+
+After analysis, the panel requires a full Home Assistant backup and a separate
+confirmation before calling `statfusion.merge`. The merge rechecks both
+statistics immediately before writing, blocks any overlapping hourly timestamp
+or unit conversion, copies the source values into the target, waits for the
+recorder to finish, and verifies the copied rows. Source rows and existing target
+rows remain unchanged. Values are copied as recorded; StatFusion does not add or
+normalize cumulative sums. Different cumulative baselines may therefore appear
+as a visible jump. A time gap or possible energy-flow mismatch also needs review
+before confirmation.
+
+The merge action is admin-only and also requires both explicit confirmations
+when called from Developer Tools:
+
+```yaml
+action: statfusion.merge
+data:
+  source_statistic_id: sensor.old_energy
+  target_statistic_id: sensor.new_energy
+  backup_confirmed: true
+  confirm: true
+```
 
 ## Project principles
 
 - Keep all statistics operations database-backend independent.
 - Prefer Home Assistant recorder interfaces over direct SQLite access.
-- Analyze first; make any future write operation explicit, reviewable, and
-  separately tested.
-- Treat a Home Assistant backup as a prerequisite for any future operation
-  that can alter historical data.
+- Analyze first; require explicit confirmation for writes.
+- Treat a full Home Assistant backup as a prerequisite for historical writes.
 
 ## Development
 

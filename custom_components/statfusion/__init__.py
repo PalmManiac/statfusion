@@ -8,8 +8,8 @@ from typing import Any
 async def async_setup_entry(hass: Any, entry: Any) -> bool:
     """Set up StatFusion from a config entry.
 
-    StatFusion only registers a read-only analyzer. It does not create
-    entities, run in the background, or change recorder data.
+    StatFusion offers an explicit analyzer and confirmed historical-statistics
+    merge. It does not create entities or run background tasks.
     """
     from .panel import async_setup_panel
     from .services import async_setup_services
