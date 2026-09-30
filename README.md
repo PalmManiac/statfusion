@@ -47,6 +47,8 @@ energy-flow, and time-range checks. It follows the active Home Assistant theme
 and can copy the displayed analysis as plain text. It does not offer any action
 that changes statistics. The last five analyses remain visible only for the
 current open panel session and can restore their source and target selection.
+The result uses a compact two-column layout on wider displays; the session
+history and the standard preparation plan can be expanded when needed.
 
 ## Analyze a possible merge
 

@@ -40,9 +40,11 @@ def test_sidebar_panel_is_packaged_with_read_only_analysis_ui() -> None:
     assert "navigator.clipboard.writeText" in panel
     assert "Die Analyse verändert keine Daten." in panel
     assert "Letzte Prüfungen" in panel
-    assert "Nur in dieser geöffneten Ansicht" in panel
+    assert "in dieser Ansicht" in panel
     assert 'class="reuse-analysis"' in panel
     assert "_rememberAnalysis" in panel
+    assert 'class="result-layout"' in panel
+    assert '<details class="review-plan"' in panel
 
 
 def test_sidebar_panel_is_admin_only_and_served_by_the_integration() -> None:
