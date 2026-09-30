@@ -24,6 +24,10 @@ def test_sidebar_panel_is_packaged_with_analysis_and_merge_ui() -> None:
     assert 'data-picker-role="source"' in panel
     assert 'data-picker-role="target"' in panel
     assert 'id="statistic-search"' in panel
+    assert 'id="picker-dialog"' in panel
+    assert 'pickerDialog.showModal()' in panel
+    assert 'dialog.picker::backdrop' in panel
+    assert 'pickerDialog.addEventListener("cancel"' in panel
     assert "Statistik suchen" in panel
     assert "Übernahmeplan zur Prüfung" in panel
     assert 'service: "merge"' in panel
@@ -75,5 +79,5 @@ def test_sidebar_panel_module_url_has_a_version_token() -> None:
     """Force browser clients to request each shipped panel revision."""
     constants = CONSTANTS_PATH.read_text(encoding="utf-8")
 
-    assert 'PANEL_JS_VERSION = "4"' in constants
+    assert 'PANEL_JS_VERSION = "5"' in constants
     assert 'statfusion-panel.js?v={PANEL_JS_VERSION}' in constants
