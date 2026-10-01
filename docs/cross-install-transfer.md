@@ -92,8 +92,11 @@ reject or explicitly migrate incompatible files.
 
 ## Implementation slices
 
-1. Add the versioned export package builder/parser and strict validation tests.
-2. Add an admin-only export action and a panel download control.
+1. [x] Add the versioned export package builder/parser and strict validation tests.
+2. [x] Add an admin-only authenticated export endpoint and a panel download
+   control. The download uses HTTP so larger multi-year exports do not have to
+   fit in a single WebSocket service response. This exports the old
+   installation's data; the destination import flow is still being built.
 3. Add panel file selection, target mapping, and read-only import preview.
 4. Add the confirmed import action, collision/recheck safeguards, and
    post-import verification.
