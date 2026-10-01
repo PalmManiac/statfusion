@@ -174,6 +174,11 @@ const EN_TRANSLATIONS = {
   "Ergebnis": "Result",
   "Kompatibilität": "Compatibility",
   "Stündliche Werte": "Hourly values",
+  "Quelle exportieren": "Export source",
+  "Export läuft…": "Exporting…",
+  "Die Exportdatei wurde heruntergeladen.": "The export file was downloaded.",
+  "Für den Export bitte eine Quellstatistik auswählen.": "Select a source statistic to export.",
+  "Der Export ist fehlgeschlagen. Prüfe die Statistik und das Home-Assistant-Protokoll.": "Export failed. Check the statistic and the Home Assistant logs.",
 };
 
 class StatFusionPanel extends HTMLElement {
@@ -194,6 +199,9 @@ class StatFusionPanel extends HTMLElement {
     this._mergeLoading = false;
     this._mergeResult = null;
     this._mergeError = "";
+    this._exportLoading = false;
+    this._exportStatus = "";
+    this._exportError = "";
   }
 
   set hass(value) {
@@ -342,6 +350,58 @@ class StatFusionPanel extends HTMLElement {
       this._mergeError = "Die Übernahme wurde blockiert oder konnte nicht bestätigt werden. Prüfe die Hinweise und Recorder-Protokolle, bevor du es erneut versuchst.";
     } finally {
       this._mergeLoading = false;
+      this._render();
+    }
+  }
+
+  async _exportStatistics() {
+    const source = this.shadowRoot.querySelector("#source").value.trim();
+    this._exportStatus = "";
+    this._exportError = "";
+    if (!source) {
+      this._exportError = "Für den Export bitte eine Quellstatistik auswählen.";
+      this._render();
+      return;
+    }
+
+    const accessToken = this._hass?.connection?.options?.auth?.accessToken
+      || this._hass?.auth?.accessToken;
+    if (!accessToken) {
+      this._exportError = "Der Export ist fehlgeschlagen. Prüfe die Statistik und das Home-Assistant-Protokoll.";
+      this._render();
+      return;
+    }
+
+    this._source = source;
+    this._exportLoading = true;
+    this._render();
+    try {
+      const exportUrl = this._hass.hassUrl
+        ? this._hass.hassUrl("/api/statfusion/export")
+        : "/api/statfusion/export";
+      const url = new URL(exportUrl, window.location.href);
+      url.searchParams.set("statistic_id", source);
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!response.ok) throw new Error("Export request failed");
+
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const filename = source.replace(/[^a-zA-Z0-9._-]/g, "_");
+      link.href = objectUrl;
+      link.download = `statfusion-${filename}.json`;
+      link.style.display = "none";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      this._exportStatus = "Die Exportdatei wurde heruntergeladen.";
+    } catch (error) {
+      this._exportError = "Der Export ist fehlgeschlagen. Prüfe die Statistik und das Home-Assistant-Protokoll.";
+    } finally {
+      this._exportLoading = false;
       this._render();
     }
   }
@@ -580,7 +640,7 @@ class StatFusionPanel extends HTMLElement {
         .workspace-title { display:flex; gap:12px; align-items:center; justify-content:space-between; margin-bottom:13px; } .eyebrow,.card-label { color:var(--secondary-text-color); font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
         .selection { display:grid; grid-template-columns:1fr 42px 1fr; gap:12px; align-items:end; }
         label { color:var(--secondary-text-color); display:grid; font-size:14px; font-weight:600; gap:7px; } input { box-sizing:border-box; background:var(--input-fill-color, var(--secondary-background-color)); border:1px solid var(--input-idle-line-color, var(--divider-color)); border-radius:8px; color:var(--primary-text-color); font:inherit; padding:12px; width:100%; } input:focus { border-color:var(--primary-color); outline:2px solid color-mix(in srgb, var(--primary-color) 25%, transparent); }.input-row { display:flex; gap:8px; }.input-row input { min-width:0; }.picker-trigger { background:var(--secondary-background-color); border:1px solid var(--divider-color); border-radius:8px; color:var(--primary-text-color); cursor:pointer; font:inherit; font-weight:700; padding:0 12px; white-space:nowrap; }.picker-trigger:hover { border-color:#0878d1; color:#0878d1; }.arrow { color:var(--primary-color); font-size:25px; line-height:45px; text-align:center; }
-        .actions { display:flex; align-items:center; gap:14px; margin-top:14px; } #analyze { appearance:none; background:#0878d1; border:0; border-radius:8px; box-shadow:0 1px 2px rgb(0 0 0 / 18%); color:#fff; cursor:pointer; font:inherit; font-weight:700; padding:10px 15px; } #analyze:hover { background:#0669b6; } #analyze:focus-visible { outline:3px solid color-mix(in srgb, #0878d1 35%, transparent); outline-offset:2px; } #analyze:disabled { background:#6c8cab; cursor:wait; opacity:1; } .read-only { color:var(--secondary-text-color); font-size:13px; }
+        .actions { display:flex; align-items:center; gap:10px; margin-top:14px; flex-wrap:wrap; } #analyze,.export-button { appearance:none; border:0; border-radius:8px; cursor:pointer; font:inherit; font-weight:700; padding:10px 15px; } #analyze { background:#0878d1; box-shadow:0 1px 2px rgb(0 0 0 / 18%); color:#fff; } #analyze:hover { background:#0669b6; } #analyze:focus-visible,.export-button:focus-visible { outline:3px solid color-mix(in srgb, #0878d1 35%, transparent); outline-offset:2px; } #analyze:disabled,.export-button:disabled { cursor:wait; opacity:.65; } #analyze:disabled { background:#6c8cab; } .export-button { background:var(--secondary-background-color); border:1px solid var(--divider-color); color:var(--primary-text-color); }.export-button:hover:not(:disabled) { border-color:#0878d1; color:#0878d1; } .read-only { color:var(--secondary-text-color); font-size:13px; }.export-status { color:var(--success-color, #2e7d32); font-size:13px; margin-top:9px; }.export-error { color:var(--error-color); font-size:13px; margin-top:9px; }
         .error { background:var(--error-color); border-radius:8px; color:var(--text-primary-color, white); margin-top:16px; padding:11px 13px; } .result { border-top:3px solid var(--primary-color); margin-top:22px; } .result.blocked { border-top-color:var(--error-color); } .result-heading,.result-actions { align-items:center; display:flex; justify-content:space-between; } .result-actions { gap:9px; }.copy-result { background:transparent; border:1px solid var(--divider-color); border-radius:7px; color:var(--primary-text-color); cursor:pointer; font:inherit; font-size:13px; font-weight:700; padding:7px 10px; }.copy-result:hover { border-color:#0878d1; color:#0878d1; }.copy-result:focus-visible { outline:3px solid color-mix(in srgb, #0878d1 35%, transparent); outline-offset:2px; }.result.ready .chip { color:var(--success-color, #2e7d32); } .result p { color:var(--secondary-text-color); margin-top:8px; }.copy-status { color:var(--success-color, #2e7d32); font-size:13px; font-weight:700; }
         .result-layout { display:grid; grid-template-columns:minmax(0, 1.2fr) minmax(300px, .8fr); gap:14px; margin-top:14px; }.result-primary,.result-secondary { align-content:start; display:grid; gap:12px; }.result-layout .assessment,.result-layout .timeline,.result-layout .stat-grid,.result-layout .findings,.result-layout .review-plan { margin-top:0; }.result-layout .assessment-grid { gap:8px; margin-top:8px; }.result-layout .assessment-card { min-height:76px; padding:11px; }.result-layout .assessment-card strong { font-size:16px; }.result-layout .assessment-card p { font-size:12px; line-height:1.3; margin-top:4px; }.result-layout .timeline { padding:13px; }.result-layout .timeline-track { margin-top:11px; }.result-layout .timeline-details { gap:8px; margin-top:9px; }.result-layout .timeline-details strong { font-size:12px; }.result-layout .stat-grid { grid-template-columns:1fr; gap:8px; }.result-layout .stat-card { padding:12px; }.result-layout .stat-card strong { font-size:13px; }.result-layout dl { gap:6px; grid-template-columns:1fr 1fr; margin-top:9px; }.result-layout dl div { display:grid; gap:2px; justify-content:initial; }.result-layout dd { text-align:left; }.result-layout .findings { gap:6px; }.result-layout .finding { font-size:13px; padding:9px; }
         .analysis-history { background:var(--card-background-color); border:1px solid var(--divider-color); border-radius:10px; box-shadow:var(--ha-card-box-shadow, none); margin-top:12px; padding:0 14px; }.analysis-history summary,.review-plan summary { align-items:center; cursor:pointer; display:flex; gap:14px; justify-content:space-between; list-style:none; padding:13px 0; }.analysis-history summary::-webkit-details-marker,.review-plan summary::-webkit-details-marker { display:none; }.analysis-history summary > span:first-child,.review-plan summary > span:first-child { font-size:15px; font-weight:700; }.analysis-history summary .eyebrow,.review-plan summary .eyebrow { display:block; margin-bottom:2px; }.analysis-history summary > span:last-child,.review-plan summary > span:last-child { color:var(--secondary-text-color); font-size:12px; text-align:right; }.history-list { border-top:1px solid var(--divider-color); display:grid; gap:7px; padding:10px 0 13px; }.history-entry { align-items:center; background:var(--secondary-background-color); border-left:3px solid var(--primary-color); border-radius:8px; display:flex; gap:12px; justify-content:space-between; padding:9px 10px; }.history-entry.blocked { border-left-color:var(--error-color); }.history-entry > div:first-child { align-items:center; display:flex; font-family:var(--code-font-family, monospace); font-size:12px; gap:7px; min-width:0; }.history-entry strong { overflow-wrap:anywhere; }.history-entry > div:first-child span { color:var(--secondary-text-color); }.history-actions { align-items:center; display:flex; flex:0 0 auto; gap:9px; }.history-actions > span { color:var(--secondary-text-color); font-size:11px; }.reuse-analysis { background:transparent; border:1px solid var(--divider-color); border-radius:7px; color:var(--primary-text-color); cursor:pointer; font:inherit; font-size:12px; font-weight:700; padding:6px 8px; }.reuse-analysis:hover { border-color:#0878d1; color:#0878d1; }
@@ -611,7 +671,9 @@ class StatFusionPanel extends HTMLElement {
             <label>Ziel<span class="input-row"><input id="target" list="statistics" value="${escapeHtml(this._target)}" placeholder="sensor.neue_energie"><button class="picker-trigger" type="button" data-picker-role="target">Liste</button></span></label>
           </div>
           <datalist id="statistics">${options}</datalist>
-          <div class="actions"><button id="analyze" ${this._loading ? "disabled" : ""}>${this._loading ? "Prüfung läuft…" : "Kompatibilität prüfen"}</button><span class="read-only">Die Prüfung verändert keine Daten.</span></div>
+          <div class="actions"><button id="analyze" ${this._loading ? "disabled" : ""}>${this._loading ? "Prüfung läuft…" : "Kompatibilität prüfen"}</button><button class="export-button" id="export-source" type="button" ${this._exportLoading ? "disabled" : ""}>${this._exportLoading ? "Export läuft…" : "Quelle exportieren"}</button><span class="read-only">Die Prüfung verändert keine Daten.</span></div>
+          ${this._exportStatus ? `<p class="export-status" role="status">${this._exportStatus}</p>` : ""}
+          ${this._exportError ? `<p class="export-error" role="alert">${this._exportError}</p>` : ""}
           ${this._error ? `<div class="error">${this._error}</div>` : ""}
         </section>
         ${this._historyTemplate()}
@@ -622,6 +684,7 @@ class StatFusionPanel extends HTMLElement {
     const pickerDialog = this.shadowRoot.querySelector("#picker-dialog");
     if (pickerDialog && !pickerDialog.open) pickerDialog.showModal();
     this.shadowRoot.querySelector("#analyze").addEventListener("click", () => this._analyze());
+    this.shadowRoot.querySelector("#export-source").addEventListener("click", () => this._exportStatistics());
     const copyResult = this.shadowRoot.querySelector("#copy-result");
     if (copyResult) copyResult.addEventListener("click", () => this._copyResult());
     const mergeButton = this.shadowRoot.querySelector("#merge");
