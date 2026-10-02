@@ -16,11 +16,9 @@ _MINIMUM_HA_VERSION = Version("2024.10.0")
 
 def test_manifest_minimum_matches_supported_recorder_api_floor() -> None:
     """Reject installs older than the Recorder and admin-service APIs used."""
-    manifest = json.loads(
-        Path("custom_components/statfusion/manifest.json").read_text(encoding="utf-8")
-    )
+    hacs_manifest = json.loads(Path("hacs.json").read_text(encoding="utf-8"))
 
-    assert Version(manifest["homeassistant"]) == _MINIMUM_HA_VERSION
+    assert Version(hacs_manifest["homeassistant"]) == _MINIMUM_HA_VERSION
     assert Version(version("homeassistant")) >= _MINIMUM_HA_VERSION
 
 

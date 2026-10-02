@@ -13,13 +13,19 @@ def test_manifest_has_required_custom_integration_metadata() -> None:
     assert manifest["domain"] == "statfusion"
     assert manifest["name"] == "StatFusion"
     assert manifest["version"] == "1.0.0"
-    assert manifest["homeassistant"] == "2024.10.0"
     assert manifest["config_flow"] is True
     assert manifest["dependencies"] == ["frontend", "http", "recorder"]
     assert manifest["integration_type"] == "service"
     assert manifest["documentation"].startswith("https://")
     assert manifest["issue_tracker"].endswith("/issues")
     assert manifest["codeowners"] == ["@PalmManiac"]
+
+
+def test_hacs_manifest_declares_minimum_home_assistant_version() -> None:
+    """Declare compatibility in HACS metadata, not the HA integration manifest."""
+    hacs_manifest = json.loads(Path("hacs.json").read_text(encoding="utf-8"))
+
+    assert hacs_manifest["homeassistant"] == "2024.10.0"
 
 
 def test_release_documentation_is_linked_and_does_not_call_review_approval() -> None:
