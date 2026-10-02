@@ -13,6 +13,7 @@ def test_manifest_has_required_custom_integration_metadata() -> None:
     assert manifest["domain"] == "statfusion"
     assert manifest["name"] == "StatFusion"
     assert manifest["version"] == "1.0.0"
+    assert manifest["homeassistant"] == "2024.10.0"
     assert manifest["config_flow"] is True
     assert manifest["dependencies"] == ["frontend", "http", "recorder"]
     assert manifest["integration_type"] == "service"

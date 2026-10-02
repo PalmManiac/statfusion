@@ -7,8 +7,8 @@ erscheinen sollen.
 
 ## Vor dem Start
 
-- Erstelle ein vollständiges Home-Assistant-Backup und stelle sicher, dass es
-  für eine Wiederherstellung verfügbar ist.
+- Erstelle ein vollständiges Home-Assistant-Backup und prüfe, ob es die
+  Recorder-Datenbank enthält. Sichere eine externe Recorder-Datenbank separat.
 - Wähle die ältere Statistik als **Quelle** und die Statistik, die fehlende
   Stunden erhalten soll, als **Ziel**.
 - Prüfe, dass beide Statistiken dieselbe Messgröße und denselben Energiefluss
@@ -66,6 +66,33 @@ StatFusion auf den Recorder und verifiziert die übernommenen Werte. Wenn auch
 nur ein Zielzeitpunkt bereits vorhanden ist oder die Verifikation fehlschlägt,
 meldet die Aktion einen Fehler. Stelle das Backup wieder her, falls das
 Ergebnis nicht deinen Erwartungen entspricht.
+
+## Statistiken zwischen Home-Assistant-Installationen übertragen (1.1.0)
+
+StatFusion 1.1.0 kann die stündlichen Langzeitdaten einer Statistik von einer
+älteren auf eine neuere Home-Assistant-Installation übertragen. Die
+Installationen verbinden sich nicht direkt: Du lädst die JSON-Datei auf der
+Quelle herunter und überträgst sie selbst zum Ziel.
+
+1. Wähle auf der Quellinstallation die Statistik und klicke auf **Quelle
+   exportieren**.
+2. Wähle auf der Zielinstallation die vorhandene Zielstatistik, lade die
+   exportierte JSON-Datei und erstelle die Importvorschau.
+3. Prüfe Quelle und Ziel, Einheiten, Datenform, Zeitraum, Lücken und alle
+   Hinweise. Gleiche Statistik-IDs sind zulässig, wenn sie zu zwei verschiedenen
+   Installationen gehören.
+4. Erstelle ein vollständiges Home-Assistant-Backup und prüfe, ob es die
+   Recorder-Datenbank enthält. Sichere eine externe Datenbank separat. Bestätige
+   das Backup, prüfe Hinweise und Zuordnung und bestätige ausdrücklich den Import.
+5. Warte auf die Erfolgsmeldung nach der Verifikation und prüfe die Zielhistorie.
+
+StatFusion blockiert inkompatible Statistiken und Stunden, die im Ziel bereits
+vorhanden sind. Bestehende Zielstunden werden nicht überschrieben. StatFusion
+rechnet Einheiten nicht um und verändert die exportierten Werte nicht. Bewahre
+die Exportdatei auf, bis du die Zielhistorie kontrolliert hast. Die Datei kann
+sensible Energie- oder Verbrauchshistorie enthalten; speichere und übertrage sie
+entsprechend vorsichtig. Unterstützt werden höchstens 250.000 Stundenwerte und
+Dateien bis 64 MiB.
 
 ## Aktionen in den Entwicklerwerkzeugen
 

@@ -9,12 +9,14 @@
 # StatFusion
 
 StatFusion is a Home Assistant integration for reviewing and merging hourly
-long-term statistics when replacing an entity or device. It provides an
-administrator-only sidebar dashboard, a read-only compatibility analysis, and
-a separately confirmed merge action.
+long-term statistics when replacing an entity or device. Starting with version
+1.1.0, it also transfers selected statistics between installations through a
+validated file export and import. It provides an administrator-only sidebar
+dashboard, a read-only compatibility analysis, and separately confirmed writes.
 
 - [English user guide](docs/user-guide.md)
 - [Deutsche Anleitung](docs/anleitung.md)
+- [Cross-install transfer format and safety](docs/cross-install-transfer.md)
 
 ## What StatFusion changes
 
