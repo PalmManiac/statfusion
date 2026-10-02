@@ -10,7 +10,13 @@ from homeassistant.core import HomeAssistant, callback, valid_entity_id
 
 from .const import DOMAIN
 from .recorder_reader import async_read_statistic_dataset
-from .transfer_format import TransferFormatError, build_transfer_package
+from .transfer_format import (
+    MAX_TRANSFER_BYTES,
+    TransferFormatError,
+    build_transfer_package,
+    parse_transfer_package,
+)
+from .transfer_preview import analyze_transfer_preview
 
 _VIEW_DATA_KEY = f"{DOMAIN}_statistics_export_view"
 
@@ -67,21 +73,84 @@ class StatisticsExportView(HomeAssistantView):
         )
 
 
+class StatisticsImportPreviewView(HomeAssistantView):
+    """Validate an uploaded package and compare it to one local target."""
+
+    url = "/api/statfusion/import/preview"
+    name = "api:statfusion:statistics-import-preview"
+    requires_auth = True
+
+    def __init__(self) -> None:
+        """Initialize the view disabled until StatFusion loads."""
+        self.active = False
+
+    @require_admin
+    async def post(self, request: web.Request) -> web.Response:
+        """Return a read-only compatibility preview for an uploaded JSON file."""
+        if not self.active:
+            return self.json_message("StatFusion is not loaded.", status_code=404)
+
+        target_id = request.query.get("target_statistic_id", "").strip()
+        if not target_id or not valid_entity_id(target_id):
+            return self.json_message(
+                "A valid target entity statistic ID is required.", status_code=400
+            )
+        if request.content_length and request.content_length > MAX_TRANSFER_BYTES:
+            return self.json_message("The transfer file is too large.", status_code=413)
+
+        # Raise aiohttp's per-request body cap to the same strict limit applied
+        # by the format parser. Home Assistant's default request cap is lower.
+        request._client_max_size = MAX_TRANSFER_BYTES  # noqa: SLF001
+        raw_file = await request.read()
+        hass: HomeAssistant = request.app[KEY_HASS]
+        try:
+            package = await hass.async_add_executor_job(
+                parse_transfer_package, raw_file
+            )
+        except TransferFormatError as err:
+            return self.json_message(str(err), status_code=400)
+
+        target, metadata, target_rows = await async_read_statistic_dataset(
+            hass, target_id
+        )
+        if (
+            metadata is None
+            or metadata.get("source") != "recorder"
+            or not valid_entity_id(target_id)
+        ):
+            return self.json_message(
+                "The target must be an existing Home Assistant entity statistic.",
+                status_code=400,
+            )
+
+        analysis, collisions = await hass.async_add_executor_job(
+            analyze_transfer_preview, package, target, target_rows
+        )
+        response = analysis.as_dict()
+        response["target_statistic_id"] = target_id
+        response["exported_at"] = package.exported_at.isoformat()
+        response["colliding_hours"] = collisions
+        return self.json(response)
+
+
 @callback
 def async_register_statistics_export_view(hass: HomeAssistant) -> None:
-    """Register the download endpoint once and enable it for this setup."""
-    if view := hass.data.get(_VIEW_DATA_KEY):
-        view.active = True
+    """Register transfer endpoints once and enable them for this setup."""
+    if views := hass.data.get(_VIEW_DATA_KEY):
+        for view in views:
+            view.active = True
         return
 
-    view = StatisticsExportView()
-    view.active = True
-    hass.http.register_view(view)
-    hass.data[_VIEW_DATA_KEY] = view
+    views = (StatisticsExportView(), StatisticsImportPreviewView())
+    for view in views:
+        view.active = True
+        hass.http.register_view(view)
+    hass.data[_VIEW_DATA_KEY] = views
 
 
 @callback
 def async_disable_statistics_export_view(hass: HomeAssistant) -> None:
-    """Disable downloads while the config entry is unloaded."""
-    if view := hass.data.get(_VIEW_DATA_KEY):
-        view.active = False
+    """Disable transfer endpoints while the config entry is unloaded."""
+    if views := hass.data.get(_VIEW_DATA_KEY):
+        for view in views:
+            view.active = False
