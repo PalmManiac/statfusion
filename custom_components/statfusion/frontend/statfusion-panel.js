@@ -21,6 +21,8 @@ const FINDING_MESSAGES = {
   time_range_overlap: "Quelle und Ziel enthalten überlappende Zeiträume in der Langzeitstatistik.",
   time_range_gap: "Zwischen Quelle und Ziel besteht eine Zeitlücke. Prüfe die Lücke vor einer späteren Übernahme.",
   time_range_contiguous: "Die Quelle endet unmittelbar vor Beginn des Ziels.",
+  unit_class_mismatch: "Quelle und Ziel verwenden unterschiedliche oder unbekannte Geräteklassen.",
+  transfer_timestamp_collision: "Mindestens eine Quellstunde ist bereits im Ziel vorhanden.",
 };
 
 const REVIEW_PLAN_STEPS = {
@@ -174,11 +176,30 @@ const EN_TRANSLATIONS = {
   "Ergebnis": "Result",
   "Kompatibilität": "Compatibility",
   "Stündliche Werte": "Hourly values",
+  "Importvorschau": "Import preview",
+  "Exportierte Quelle": "Exported source",
+  "Zielstatistik": "Target statistic",
+  "Stunden": "Hours",
+  "Überschneidende Stunden": "Overlapping hours",
+  "Statistiken aus anderer Installation importieren": "Import statistics from another installation",
+  "Prüfe eine StatFusion-Exportdatei gegen die ausgewählte Zielstatistik. Diese Vorschau verändert keine Daten.": "Check a StatFusion export against the selected target statistic. This preview does not change any data.",
+  "JSON-Datei auswählen": "Choose JSON file",
+  "Keine Datei ausgewählt": "No file selected",
+  "Importvorschau erstellen": "Create import preview",
+  "Vorschau wird geprüft…": "Checking preview…",
+  "Bitte zuerst eine Zielstatistik auswählen.": "Select a target statistic first.",
+  "Bitte eine StatFusion-Exportdatei auswählen.": "Choose a StatFusion export file.",
+  "Die Vorschau konnte nicht erstellt werden. Prüfe Datei und Zielstatistik.": "Could not create the preview. Check the file and target statistic.",
+  "Die Datei und Zielstatistik wurden geprüft. Es wurden keine Daten verändert.": "The file and target statistic were checked. No data was changed.",
+  "Keine Hinweise": "No findings",
   "Quelle exportieren": "Export source",
   "Export läuft…": "Exporting…",
   "Die Exportdatei wurde heruntergeladen.": "The export file was downloaded.",
   "Für den Export bitte eine Quellstatistik auswählen.": "Select a source statistic to export.",
   "Der Export ist fehlgeschlagen. Prüfe die Statistik und das Home-Assistant-Protokoll.": "Export failed. Check the statistic and the Home Assistant logs.",
+  "Quelle und Ziel verwenden unterschiedliche oder unbekannte Geräteklassen.": "Source and target use different or unknown device classes.",
+  "Mindestens eine Quellstunde ist bereits im Ziel vorhanden.": "At least one source hour already exists in the target.",
+  "Prüfe die Hinweise vor jedem späteren Import.": "Review the findings before any later import.",
 };
 
 class StatFusionPanel extends HTMLElement {
@@ -202,6 +223,10 @@ class StatFusionPanel extends HTMLElement {
     this._exportLoading = false;
     this._exportStatus = "";
     this._exportError = "";
+    this._transferFile = null;
+    this._transferLoading = false;
+    this._transferPreview = null;
+    this._transferError = "";
   }
 
   set hass(value) {
@@ -220,6 +245,17 @@ class StatFusionPanel extends HTMLElement {
   _isEnglish() {
     const language = this._hass?.locale?.language || navigator.language || "de";
     return language.toLowerCase().startsWith("en");
+  }
+
+  _accessToken() {
+    return this._hass?.connection?.options?.auth?.accessToken
+      || this._hass?.auth?.accessToken
+      || null;
+  }
+
+  _apiUrl(path) {
+    const base = this._hass?.hassUrl ? this._hass.hassUrl(path) : path;
+    return new URL(base, window.location.href);
   }
 
   _localize(value) {
@@ -364,8 +400,7 @@ class StatFusionPanel extends HTMLElement {
       return;
     }
 
-    const accessToken = this._hass?.connection?.options?.auth?.accessToken
-      || this._hass?.auth?.accessToken;
+    const accessToken = this._accessToken();
     if (!accessToken) {
       this._exportError = "Der Export ist fehlgeschlagen. Prüfe die Statistik und das Home-Assistant-Protokoll.";
       this._render();
@@ -376,10 +411,7 @@ class StatFusionPanel extends HTMLElement {
     this._exportLoading = true;
     this._render();
     try {
-      const exportUrl = this._hass.hassUrl
-        ? this._hass.hassUrl("/api/statfusion/export")
-        : "/api/statfusion/export";
-      const url = new URL(exportUrl, window.location.href);
+      const url = this._apiUrl("/api/statfusion/export");
       url.searchParams.set("statistic_id", source);
       const response = await fetch(url, {
         headers: { Authorization: `Bearer ${accessToken}` },
@@ -404,6 +436,81 @@ class StatFusionPanel extends HTMLElement {
       this._exportLoading = false;
       this._render();
     }
+  }
+
+  async _previewTransfer() {
+    const target = this.shadowRoot.querySelector("#target").value.trim();
+    this._target = target;
+    this._transferError = "";
+    this._transferPreview = null;
+    if (!this._transferFile) {
+      this._transferError = "Bitte eine StatFusion-Exportdatei auswählen.";
+      this._render();
+      return;
+    }
+    if (!target) {
+      this._transferError = "Bitte zuerst eine Zielstatistik auswählen.";
+      this._render();
+      return;
+    }
+
+    const accessToken = this._accessToken();
+    if (!accessToken) {
+      this._transferError = "Die Vorschau konnte nicht erstellt werden. Prüfe Datei und Zielstatistik.";
+      this._render();
+      return;
+    }
+
+    this._transferLoading = true;
+    this._render();
+    try {
+      const url = this._apiUrl("/api/statfusion/import/preview");
+      url.searchParams.set("target_statistic_id", target);
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: this._transferFile,
+      });
+      if (!response.ok) throw new Error("Preview request failed");
+      this._transferPreview = await response.json();
+    } catch (error) {
+      this._transferError = "Die Vorschau konnte nicht erstellt werden. Prüfe Datei und Zielstatistik.";
+    } finally {
+      this._transferLoading = false;
+      this._render();
+    }
+  }
+
+  _transferPreviewTemplate() {
+    if (!this._transferPreview) return "";
+    const preview = this._transferPreview;
+    const ready = preview.decision === "ready_for_review";
+    const findings = (preview.findings || []).map((finding) => `
+      <li class="finding ${finding.severity}">
+        <span>${finding.severity === "error" ? "!" : finding.severity === "warning" ? "!" : "i"}</span>
+        ${escapeHtml(FINDING_MESSAGES[finding.code] || finding.message)}
+      </li>`).join("");
+    return `
+      <section class="transfer-preview ${ready ? "ready" : "blocked"}" aria-live="polite">
+        <div class="result-heading">
+          <div><span class="eyebrow">Importvorschau</span><h2>${ready ? "Bereit zur Prüfung" : "Blockiert"}</h2></div>
+          <span class="chip">${ready ? "Keine Änderungen" : "Blockiert"}</span>
+        </div>
+        <p>${"Die Datei und Zielstatistik wurden geprüft. Es wurden keine Daten verändert."}</p>
+        <div class="transfer-preview-grid">
+          <div><span>Exportierte Quelle</span><strong>${escapeHtml(preview.source.statistic_id)}</strong></div>
+          <div><span>Zielstatistik</span><strong>${escapeHtml(preview.target.statistic_id)}</strong></div>
+          <div><span>Zeitraum</span><strong>${escapeHtml(this._formatDate(preview.source.first))} – ${escapeHtml(this._formatDate(preview.source.last))}</strong></div>
+          <div><span>Stunden</span><strong>${Number(preview.source.sample_count) || 0}</strong></div>
+          <div><span>Einheit</span><strong>${escapeHtml(preview.source.unit_of_measurement || "Unbekannt")}</strong></div>
+          <div><span>Überschneidende Stunden</span><strong>${Number(preview.colliding_hours) || 0}</strong></div>
+        </div>
+        ${findings ? `<ul class="findings">${findings}</ul>` : `<p>Keine Hinweise.</p>`}
+        <p class="read-only">Die Vorschau verändert keine Recorder-Daten.</p>
+      </section>`;
   }
 
   _rememberAnalysis() {
@@ -640,6 +747,7 @@ class StatFusionPanel extends HTMLElement {
         .workspace-title { display:flex; gap:12px; align-items:center; justify-content:space-between; margin-bottom:13px; } .eyebrow,.card-label { color:var(--secondary-text-color); font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
         .selection { display:grid; grid-template-columns:1fr 42px 1fr; gap:12px; align-items:end; }
         label { color:var(--secondary-text-color); display:grid; font-size:14px; font-weight:600; gap:7px; } input { box-sizing:border-box; background:var(--input-fill-color, var(--secondary-background-color)); border:1px solid var(--input-idle-line-color, var(--divider-color)); border-radius:8px; color:var(--primary-text-color); font:inherit; padding:12px; width:100%; } input:focus { border-color:var(--primary-color); outline:2px solid color-mix(in srgb, var(--primary-color) 25%, transparent); }.input-row { display:flex; gap:8px; }.input-row input { min-width:0; }.picker-trigger { background:var(--secondary-background-color); border:1px solid var(--divider-color); border-radius:8px; color:var(--primary-text-color); cursor:pointer; font:inherit; font-weight:700; padding:0 12px; white-space:nowrap; }.picker-trigger:hover { border-color:#0878d1; color:#0878d1; }.arrow { color:var(--primary-color); font-size:25px; line-height:45px; text-align:center; }
+        .transfer-workspace { margin-top:14px; }.transfer-controls { align-items:end; display:flex; flex-wrap:wrap; gap:12px; margin-top:12px; }.transfer-controls label { flex:1 1 260px; }.transfer-controls input[type=file] { display:block; margin-top:7px; max-width:100%; }.transfer-button { appearance:none; background:#0878d1; border:0; border-radius:8px; box-shadow:0 1px 2px rgb(0 0 0 / 18%); color:#fff; cursor:pointer; font:inherit; font-weight:700; padding:10px 15px; }.transfer-button:hover:not(:disabled) { background:#0669b6; }.transfer-button:disabled { cursor:wait; opacity:.65; }.transfer-preview { background:var(--card-background-color); border:1px solid var(--divider-color); border-left:4px solid var(--success-color, #2e7d32); border-radius:9px; margin-top:14px; padding:14px; }.transfer-preview.blocked { border-left-color:var(--error-color); }.transfer-preview-grid { display:grid; gap:12px; grid-template-columns:repeat(3,minmax(0,1fr)); margin-top:14px; }.transfer-preview-grid > div { background:var(--secondary-background-color); border-radius:8px; min-width:0; padding:10px; }.transfer-preview-grid span { color:var(--secondary-text-color); display:block; font-size:12px; }.transfer-preview-grid strong { display:block; font-family:var(--code-font-family,monospace); font-size:13px; margin-top:4px; overflow-wrap:anywhere; }.transfer-error { color:var(--error-color); font-size:13px; margin-top:9px; }
         .actions { display:flex; align-items:center; gap:10px; margin-top:14px; flex-wrap:wrap; } #analyze,.export-button { appearance:none; border:0; border-radius:8px; cursor:pointer; font:inherit; font-weight:700; padding:10px 15px; } #analyze { background:#0878d1; box-shadow:0 1px 2px rgb(0 0 0 / 18%); color:#fff; } #analyze:hover { background:#0669b6; } #analyze:focus-visible,.export-button:focus-visible { outline:3px solid color-mix(in srgb, #0878d1 35%, transparent); outline-offset:2px; } #analyze:disabled,.export-button:disabled { cursor:wait; opacity:.65; } #analyze:disabled { background:#6c8cab; } .export-button { background:var(--secondary-background-color); border:1px solid var(--divider-color); color:var(--primary-text-color); }.export-button:hover:not(:disabled) { border-color:#0878d1; color:#0878d1; } .read-only { color:var(--secondary-text-color); font-size:13px; }.export-status { color:var(--success-color, #2e7d32); font-size:13px; margin-top:9px; }.export-error { color:var(--error-color); font-size:13px; margin-top:9px; }
         .error { background:var(--error-color); border-radius:8px; color:var(--text-primary-color, white); margin-top:16px; padding:11px 13px; } .result { border-top:3px solid var(--primary-color); margin-top:22px; } .result.blocked { border-top-color:var(--error-color); } .result-heading,.result-actions { align-items:center; display:flex; justify-content:space-between; } .result-actions { gap:9px; }.copy-result { background:transparent; border:1px solid var(--divider-color); border-radius:7px; color:var(--primary-text-color); cursor:pointer; font:inherit; font-size:13px; font-weight:700; padding:7px 10px; }.copy-result:hover { border-color:#0878d1; color:#0878d1; }.copy-result:focus-visible { outline:3px solid color-mix(in srgb, #0878d1 35%, transparent); outline-offset:2px; }.result.ready .chip { color:var(--success-color, #2e7d32); } .result p { color:var(--secondary-text-color); margin-top:8px; }.copy-status { color:var(--success-color, #2e7d32); font-size:13px; font-weight:700; }
         .result-layout { display:grid; grid-template-columns:minmax(0, 1.2fr) minmax(300px, .8fr); gap:14px; margin-top:14px; }.result-primary,.result-secondary { align-content:start; display:grid; gap:12px; }.result-layout .assessment,.result-layout .timeline,.result-layout .stat-grid,.result-layout .findings,.result-layout .review-plan { margin-top:0; }.result-layout .assessment-grid { gap:8px; margin-top:8px; }.result-layout .assessment-card { min-height:76px; padding:11px; }.result-layout .assessment-card strong { font-size:16px; }.result-layout .assessment-card p { font-size:12px; line-height:1.3; margin-top:4px; }.result-layout .timeline { padding:13px; }.result-layout .timeline-track { margin-top:11px; }.result-layout .timeline-details { gap:8px; margin-top:9px; }.result-layout .timeline-details strong { font-size:12px; }.result-layout .stat-grid { grid-template-columns:1fr; gap:8px; }.result-layout .stat-card { padding:12px; }.result-layout .stat-card strong { font-size:13px; }.result-layout dl { gap:6px; grid-template-columns:1fr 1fr; margin-top:9px; }.result-layout dl div { display:grid; gap:2px; justify-content:initial; }.result-layout dd { text-align:left; }.result-layout .findings { gap:6px; }.result-layout .finding { font-size:13px; padding:9px; }
@@ -676,6 +784,17 @@ class StatFusionPanel extends HTMLElement {
           ${this._exportError ? `<p class="export-error" role="alert">${this._exportError}</p>` : ""}
           ${this._error ? `<div class="error">${this._error}</div>` : ""}
         </section>
+        <section class="workspace transfer-workspace">
+          <div class="workspace-title"><div><span class="eyebrow">Import</span><h2>Statistiken aus anderer Installation importieren</h2></div></div>
+          <p class="subtitle">Prüfe eine StatFusion-Exportdatei gegen die ausgewählte Zielstatistik. Diese Vorschau verändert keine Daten.</p>
+          <div class="transfer-controls">
+            <label>JSON-Datei auswählen<input id="transfer-file" type="file" accept=".json,application/json"></label>
+            <button class="transfer-button" id="preview-transfer" type="button" ${this._transferLoading ? "disabled" : ""}>${this._transferLoading ? "Vorschau wird geprüft…" : "Importvorschau erstellen"}</button>
+            <span class="read-only">${escapeHtml(this._transferFile?.name || "Keine Datei ausgewählt")}</span>
+          </div>
+          ${this._transferError ? `<p class="transfer-error" role="alert">${this._transferError}</p>` : ""}
+          ${this._transferPreviewTemplate()}
+        </section>
         ${this._historyTemplate()}
         ${this._resultTemplate()}
       </main>
@@ -685,6 +804,13 @@ class StatFusionPanel extends HTMLElement {
     if (pickerDialog && !pickerDialog.open) pickerDialog.showModal();
     this.shadowRoot.querySelector("#analyze").addEventListener("click", () => this._analyze());
     this.shadowRoot.querySelector("#export-source").addEventListener("click", () => this._exportStatistics());
+    this.shadowRoot.querySelector("#preview-transfer").addEventListener("click", () => this._previewTransfer());
+    this.shadowRoot.querySelector("#transfer-file").addEventListener("change", (event) => {
+      this._transferFile = event.target.files?.[0] || null;
+      this._transferPreview = null;
+      this._transferError = "";
+      this._render();
+    });
     const copyResult = this.shadowRoot.querySelector("#copy-result");
     if (copyResult) copyResult.addEventListener("click", () => this._copyResult());
     const mergeButton = this.shadowRoot.querySelector("#merge");
@@ -709,6 +835,7 @@ class StatFusionPanel extends HTMLElement {
     });
     this.shadowRoot.querySelector("#target").addEventListener("input", (event) => {
       this._target = event.target.value;
+      this._transferPreview = null;
     });
     this.shadowRoot.querySelectorAll(".picker-trigger").forEach((trigger) => {
       trigger.addEventListener("click", () => this._openPicker(trigger.dataset.pickerRole));
@@ -754,7 +881,10 @@ class StatFusionPanel extends HTMLElement {
 
   _selectStatistic(statisticId) {
     if (this._pickerRole === "source") this._source = statisticId;
-    if (this._pickerRole === "target") this._target = statisticId;
+    if (this._pickerRole === "target") {
+      this._target = statisticId;
+      this._transferPreview = null;
+    }
     this._closePicker();
   }
 

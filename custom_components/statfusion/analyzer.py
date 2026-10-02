@@ -19,16 +19,20 @@ _ENERGY_FLOW_KEYWORDS = {
 
 
 def analyze_merge(
-    source: StatisticSnapshot, target: StatisticSnapshot
+    source: StatisticSnapshot,
+    target: StatisticSnapshot,
+    *,
+    allow_same_statistic_id: bool = False,
 ) -> MergeAnalysis:
     """Produce a read-only compatibility analysis for source and target.
 
-    It checks whether a merge can safely append source rows to the target. It
-    does not calculate replacement statistics or write to the recorder.
+    It checks whether source rows can safely append to the target. The
+    same-statistic-ID exception is intended only for a validated export from a
+    different installation. This function never writes to the recorder.
     """
     findings: list[AnalysisFinding] = []
 
-    if source.statistic_id == target.statistic_id:
+    if source.statistic_id == target.statistic_id and not allow_same_statistic_id:
         findings.append(
             _error(
                 "same_statistic_id",
