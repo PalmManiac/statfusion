@@ -200,6 +200,20 @@ const EN_TRANSLATIONS = {
   "Quelle und Ziel verwenden unterschiedliche oder unbekannte Geräteklassen.": "Source and target use different or unknown device classes.",
   "Mindestens eine Quellstunde ist bereits im Ziel vorhanden.": "At least one source hour already exists in the target.",
   "Prüfe die Hinweise vor jedem späteren Import.": "Review the findings before any later import.",
+  "Backup erstellt": "Backup created",
+  "Hinweise geprüft": "Warnings reviewed",
+  "Import bestätigen": "Confirm import",
+  "Ich habe vor dem Import ein vollständiges Home-Assistant-Backup erstellt und geprüft, dass es verfügbar ist.": "I created a full Home Assistant backup before importing and verified that it is available.",
+  "Ich habe alle Hinweise geprüft und bestätige die Zuordnung von Datei und Zielstatistik.": "I reviewed all findings and confirm the file-to-target mapping.",
+  "Ich bestätige den Import der angezeigten Stunden in die Zielstatistik.": "I confirm importing the displayed hours into the target statistic.",
+  "Stundenwerte jetzt importieren": "Import hourly values now",
+  "Recorder importiert …": "Recorder is importing …",
+  "Import abgeschlossen": "Import completed",
+  "Die Quell-Datei und vorhandenen Zielstunden blieben unverändert. Alle importierten Stunden wurden überprüft.": "The source file and existing target hours were preserved. All imported hours were verified.",
+  "Import fehlgeschlagen": "Import failed",
+  "Backup erforderlich": "Backup required",
+  "Importierte Stunden:": "Imported hours:",
+  "Der Import konnte nicht bestätigt werden. Prüfe Recorder-Protokolle und Zielstatistik, bevor du es erneut versuchst.": "The import could not be verified. Check Recorder logs and the target statistic before trying again.",
 };
 
 class StatFusionPanel extends HTMLElement {
@@ -227,6 +241,8 @@ class StatFusionPanel extends HTMLElement {
     this._transferLoading = false;
     this._transferPreview = null;
     this._transferError = "";
+    this._transferImportLoading = false;
+    this._transferImportResult = null;
   }
 
   set hass(value) {
@@ -443,6 +459,7 @@ class StatFusionPanel extends HTMLElement {
     this._target = target;
     this._transferError = "";
     this._transferPreview = null;
+    this._transferImportResult = null;
     if (!this._transferFile) {
       this._transferError = "Bitte eine StatFusion-Exportdatei auswählen.";
       this._render();
@@ -484,6 +501,47 @@ class StatFusionPanel extends HTMLElement {
     }
   }
 
+  async _importTransfer() {
+    const backup = this.shadowRoot.querySelector("#transfer-backup-confirmed")?.checked;
+    const warnings = this.shadowRoot.querySelector("#transfer-warnings-confirmed")?.checked;
+    const confirm = this.shadowRoot.querySelector("#transfer-import-confirmed")?.checked;
+    if (!backup || !warnings || !confirm || this._transferPreview?.decision !== "ready_for_review") return;
+
+    const target = this.shadowRoot.querySelector("#target").value.trim();
+    const accessToken = this._accessToken();
+    if (!this._transferFile || !target || !accessToken) {
+      this._transferError = "Der Import konnte nicht bestätigt werden. Prüfe Recorder-Protokolle und Zielstatistik, bevor du es erneut versuchst.";
+      this._render();
+      return;
+    }
+
+    this._transferImportLoading = true;
+    this._transferError = "";
+    this._render();
+    try {
+      const url = this._apiUrl("/api/statfusion/import");
+      url.searchParams.set("target_statistic_id", target);
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+          "X-StatFusion-Backup-Confirmed": "true",
+          "X-StatFusion-Warnings-Confirmed": "true",
+          "X-StatFusion-Import-Confirmed": "true",
+        },
+        body: this._transferFile,
+      });
+      if (!response.ok) throw new Error("Import was not confirmed");
+      this._transferImportResult = await response.json();
+    } catch (error) {
+      this._transferError = "Der Import konnte nicht bestätigt werden. Prüfe Recorder-Protokolle und Zielstatistik, bevor du es erneut versuchst.";
+    } finally {
+      this._transferImportLoading = false;
+      this._render();
+    }
+  }
+
   _transferPreviewTemplate() {
     if (!this._transferPreview) return "";
     const preview = this._transferPreview;
@@ -510,7 +568,21 @@ class StatFusionPanel extends HTMLElement {
         </div>
         ${findings ? `<ul class="findings">${findings}</ul>` : `<p>Keine Hinweise.</p>`}
         <p class="read-only">Die Vorschau verändert keine Recorder-Daten.</p>
+        ${ready ? this._transferConfirmationTemplate() : ""}
       </section>`;
+  }
+
+  _transferConfirmationTemplate() {
+    if (this._transferImportResult) {
+      return `<section class="transfer-import-result" role="status"><strong>Import abgeschlossen</strong><p>Die Quell-Datei und vorhandenen Zielstunden blieben unverändert. Alle importierten Stunden wurden überprüft.</p><p>Importierte Stunden: ${Number(this._transferImportResult.imported_hours) || 0}</p></section>`;
+    }
+    const disabled = this._transferImportLoading ? "disabled" : "";
+    return `
+      <aside class="transfer-backup-notice" role="alert"><strong>Backup erforderlich</strong><p>Erstelle vor dem Import ein vollständiges Home-Assistant-Backup und prüfe, dass es verfügbar ist. Der Import erfolgt auf eigene Gefahr.</p></aside>
+      <label class="confirm-check"><input id="transfer-backup-confirmed" type="checkbox"><span>Ich habe vor dem Import ein vollständiges Home-Assistant-Backup erstellt und geprüft, dass es verfügbar ist.</span></label>
+      <label class="confirm-check"><input id="transfer-warnings-confirmed" type="checkbox"><span>Ich habe alle Hinweise geprüft und bestätige die Zuordnung von Datei und Zielstatistik.</span></label>
+      <label class="confirm-check"><input id="transfer-import-confirmed" type="checkbox"><span>Ich bestätige den Import der angezeigten Stunden in die Zielstatistik.</span></label>
+      <button class="transfer-button" id="import-transfer" type="button" ${disabled}>${this._transferImportLoading ? "Recorder importiert …" : "Stundenwerte jetzt importieren"}</button>`;
   }
 
   _rememberAnalysis() {
@@ -747,7 +819,7 @@ class StatFusionPanel extends HTMLElement {
         .workspace-title { display:flex; gap:12px; align-items:center; justify-content:space-between; margin-bottom:13px; } .eyebrow,.card-label { color:var(--secondary-text-color); font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
         .selection { display:grid; grid-template-columns:1fr 42px 1fr; gap:12px; align-items:end; }
         label { color:var(--secondary-text-color); display:grid; font-size:14px; font-weight:600; gap:7px; } input { box-sizing:border-box; background:var(--input-fill-color, var(--secondary-background-color)); border:1px solid var(--input-idle-line-color, var(--divider-color)); border-radius:8px; color:var(--primary-text-color); font:inherit; padding:12px; width:100%; } input:focus { border-color:var(--primary-color); outline:2px solid color-mix(in srgb, var(--primary-color) 25%, transparent); }.input-row { display:flex; gap:8px; }.input-row input { min-width:0; }.picker-trigger { background:var(--secondary-background-color); border:1px solid var(--divider-color); border-radius:8px; color:var(--primary-text-color); cursor:pointer; font:inherit; font-weight:700; padding:0 12px; white-space:nowrap; }.picker-trigger:hover { border-color:#0878d1; color:#0878d1; }.arrow { color:var(--primary-color); font-size:25px; line-height:45px; text-align:center; }
-        .transfer-workspace { margin-top:14px; }.transfer-controls { align-items:end; display:flex; flex-wrap:wrap; gap:12px; margin-top:12px; }.transfer-controls label { flex:1 1 260px; }.transfer-controls input[type=file] { display:block; margin-top:7px; max-width:100%; }.transfer-button { appearance:none; background:#0878d1; border:0; border-radius:8px; box-shadow:0 1px 2px rgb(0 0 0 / 18%); color:#fff; cursor:pointer; font:inherit; font-weight:700; padding:10px 15px; }.transfer-button:hover:not(:disabled) { background:#0669b6; }.transfer-button:disabled { cursor:wait; opacity:.65; }.transfer-preview { background:var(--card-background-color); border:1px solid var(--divider-color); border-left:4px solid var(--success-color, #2e7d32); border-radius:9px; margin-top:14px; padding:14px; }.transfer-preview.blocked { border-left-color:var(--error-color); }.transfer-preview-grid { display:grid; gap:12px; grid-template-columns:repeat(3,minmax(0,1fr)); margin-top:14px; }.transfer-preview-grid > div { background:var(--secondary-background-color); border-radius:8px; min-width:0; padding:10px; }.transfer-preview-grid span { color:var(--secondary-text-color); display:block; font-size:12px; }.transfer-preview-grid strong { display:block; font-family:var(--code-font-family,monospace); font-size:13px; margin-top:4px; overflow-wrap:anywhere; }.transfer-error { color:var(--error-color); font-size:13px; margin-top:9px; }
+        .transfer-workspace { margin-top:14px; }.transfer-controls { align-items:end; display:flex; flex-wrap:wrap; gap:12px; margin-top:12px; }.transfer-controls label { flex:1 1 260px; }.transfer-controls input[type=file] { display:block; margin-top:7px; max-width:100%; }.transfer-button { appearance:none; background:#0878d1; border:0; border-radius:8px; box-shadow:0 1px 2px rgb(0 0 0 / 18%); color:#fff; cursor:pointer; font:inherit; font-weight:700; padding:10px 15px; }.transfer-button:hover:not(:disabled) { background:#0669b6; }.transfer-button:disabled { cursor:wait; opacity:.65; }.transfer-preview { background:var(--card-background-color); border:1px solid var(--divider-color); border-left:4px solid var(--success-color, #2e7d32); border-radius:9px; margin-top:14px; padding:14px; }.transfer-preview.blocked { border-left-color:var(--error-color); }.transfer-preview-grid { display:grid; gap:12px; grid-template-columns:repeat(3,minmax(0,1fr)); margin-top:14px; }.transfer-preview-grid > div { background:var(--secondary-background-color); border-radius:8px; min-width:0; padding:10px; }.transfer-preview-grid span { color:var(--secondary-text-color); display:block; font-size:12px; }.transfer-preview-grid strong { display:block; font-family:var(--code-font-family,monospace); font-size:13px; margin-top:4px; overflow-wrap:anywhere; }.transfer-backup-notice { background:color-mix(in srgb, var(--error-color, #c62828) 9%, var(--card-background-color)); border-left:4px solid var(--error-color, #c62828); border-radius:8px; margin-top:14px; padding:10px 12px; }.transfer-backup-notice p { margin:5px 0 0; }.transfer-import-result { background:var(--secondary-background-color); border-left:4px solid var(--success-color, #2e7d32); border-radius:8px; margin-top:14px; padding:12px; }.transfer-import-result p { margin:6px 0 0; }.transfer-error { color:var(--error-color); font-size:13px; margin-top:9px; }
         .actions { display:flex; align-items:center; gap:10px; margin-top:14px; flex-wrap:wrap; } #analyze,.export-button { appearance:none; border:0; border-radius:8px; cursor:pointer; font:inherit; font-weight:700; padding:10px 15px; } #analyze { background:#0878d1; box-shadow:0 1px 2px rgb(0 0 0 / 18%); color:#fff; } #analyze:hover { background:#0669b6; } #analyze:focus-visible,.export-button:focus-visible { outline:3px solid color-mix(in srgb, #0878d1 35%, transparent); outline-offset:2px; } #analyze:disabled,.export-button:disabled { cursor:wait; opacity:.65; } #analyze:disabled { background:#6c8cab; } .export-button { background:var(--secondary-background-color); border:1px solid var(--divider-color); color:var(--primary-text-color); }.export-button:hover:not(:disabled) { border-color:#0878d1; color:#0878d1; } .read-only { color:var(--secondary-text-color); font-size:13px; }.export-status { color:var(--success-color, #2e7d32); font-size:13px; margin-top:9px; }.export-error { color:var(--error-color); font-size:13px; margin-top:9px; }
         .error { background:var(--error-color); border-radius:8px; color:var(--text-primary-color, white); margin-top:16px; padding:11px 13px; } .result { border-top:3px solid var(--primary-color); margin-top:22px; } .result.blocked { border-top-color:var(--error-color); } .result-heading,.result-actions { align-items:center; display:flex; justify-content:space-between; } .result-actions { gap:9px; }.copy-result { background:transparent; border:1px solid var(--divider-color); border-radius:7px; color:var(--primary-text-color); cursor:pointer; font:inherit; font-size:13px; font-weight:700; padding:7px 10px; }.copy-result:hover { border-color:#0878d1; color:#0878d1; }.copy-result:focus-visible { outline:3px solid color-mix(in srgb, #0878d1 35%, transparent); outline-offset:2px; }.result.ready .chip { color:var(--success-color, #2e7d32); } .result p { color:var(--secondary-text-color); margin-top:8px; }.copy-status { color:var(--success-color, #2e7d32); font-size:13px; font-weight:700; }
         .result-layout { display:grid; grid-template-columns:minmax(0, 1.2fr) minmax(300px, .8fr); gap:14px; margin-top:14px; }.result-primary,.result-secondary { align-content:start; display:grid; gap:12px; }.result-layout .assessment,.result-layout .timeline,.result-layout .stat-grid,.result-layout .findings,.result-layout .review-plan { margin-top:0; }.result-layout .assessment-grid { gap:8px; margin-top:8px; }.result-layout .assessment-card { min-height:76px; padding:11px; }.result-layout .assessment-card strong { font-size:16px; }.result-layout .assessment-card p { font-size:12px; line-height:1.3; margin-top:4px; }.result-layout .timeline { padding:13px; }.result-layout .timeline-track { margin-top:11px; }.result-layout .timeline-details { gap:8px; margin-top:9px; }.result-layout .timeline-details strong { font-size:12px; }.result-layout .stat-grid { grid-template-columns:1fr; gap:8px; }.result-layout .stat-card { padding:12px; }.result-layout .stat-card strong { font-size:13px; }.result-layout dl { gap:6px; grid-template-columns:1fr 1fr; margin-top:9px; }.result-layout dl div { display:grid; gap:2px; justify-content:initial; }.result-layout dd { text-align:left; }.result-layout .findings { gap:6px; }.result-layout .finding { font-size:13px; padding:9px; }
@@ -764,6 +836,7 @@ class StatFusionPanel extends HTMLElement {
         .picker-heading { align-items:flex-start; display:flex; justify-content:space-between; margin-bottom:17px; }.close-picker { background:transparent; border:0; color:var(--secondary-text-color); cursor:pointer; font-size:28px; line-height:28px; padding:0 5px; }.picker-count { color:var(--secondary-text-color); font-size:13px; margin:11px 0; }.picker-options { border:1px solid var(--divider-color); border-radius:8px; max-height:min(420px, calc(100dvh - 230px)); overflow:auto; }.picker-option { background:transparent; border:0; border-bottom:1px solid var(--divider-color); color:var(--primary-text-color); cursor:pointer; display:flex; font-family:var(--code-font-family, monospace); font-size:14px; font-weight:400; justify-content:space-between; padding:13px; text-align:left; width:100%; }.picker-option:hover { background:var(--secondary-background-color); }.picker-option span:last-child { color:#0878d1; font-family:var(--primary-font-family, sans-serif); font-size:12px; font-weight:700; }.picker-option:last-child { border-bottom:0; }.empty { color:var(--secondary-text-color); margin:0; padding:18px; }
         @media (max-width:820px) { .result-layout { grid-template-columns:1fr; }.result-layout .stat-grid { grid-template-columns:1fr 1fr; }.result-layout dl { grid-template-columns:1fr; } }
         @media (max-width:680px) { main { padding:18px 14px 30px; } header,.selection { display:block; } header .chip { display:inline-block; margin-top:14px; } .result-heading,.history-entry { align-items:flex-start; flex-direction:column; gap:10px; }.result-actions { align-items:flex-end; flex-direction:column; } .history-actions { width:100%; }.history-actions > span { flex:1; }.arrow { display:none; } label + .arrow + label { margin-top:14px; }.assessment-grid,.stat-grid,.timeline-details,.result-layout .stat-grid { grid-template-columns:1fr; }.timeline-details div:last-child,.timeline-relation { text-align:left; } .workspace,.result { padding:14px; } dialog.picker { padding:17px; width:calc(100% - 24px); } }
+        @media (max-width:680px) { .transfer-preview-grid { grid-template-columns:1fr; } }
       </style>
       <main>
         <header>
@@ -808,9 +881,25 @@ class StatFusionPanel extends HTMLElement {
     this.shadowRoot.querySelector("#transfer-file").addEventListener("change", (event) => {
       this._transferFile = event.target.files?.[0] || null;
       this._transferPreview = null;
+      this._transferImportResult = null;
       this._transferError = "";
       this._render();
     });
+    const transferImportButton = this.shadowRoot.querySelector("#import-transfer");
+    const transferConfirmations = [
+      this.shadowRoot.querySelector("#transfer-backup-confirmed"),
+      this.shadowRoot.querySelector("#transfer-warnings-confirmed"),
+      this.shadowRoot.querySelector("#transfer-import-confirmed"),
+    ];
+    if (transferImportButton && transferConfirmations.every(Boolean)) {
+      const syncTransferImportButton = () => {
+        transferImportButton.disabled = this._transferImportLoading
+          || !transferConfirmations.every((checkbox) => checkbox.checked);
+      };
+      transferConfirmations.forEach((checkbox) => checkbox.addEventListener("change", syncTransferImportButton));
+      transferImportButton.addEventListener("click", () => this._importTransfer());
+      syncTransferImportButton();
+    }
     const copyResult = this.shadowRoot.querySelector("#copy-result");
     if (copyResult) copyResult.addEventListener("click", () => this._copyResult());
     const mergeButton = this.shadowRoot.querySelector("#merge");
@@ -836,6 +925,7 @@ class StatFusionPanel extends HTMLElement {
     this.shadowRoot.querySelector("#target").addEventListener("input", (event) => {
       this._target = event.target.value;
       this._transferPreview = null;
+      this._transferImportResult = null;
     });
     this.shadowRoot.querySelectorAll(".picker-trigger").forEach((trigger) => {
       trigger.addEventListener("click", () => this._openPicker(trigger.dataset.pickerRole));
@@ -884,6 +974,7 @@ class StatFusionPanel extends HTMLElement {
     if (this._pickerRole === "target") {
       this._target = statisticId;
       this._transferPreview = null;
+      this._transferImportResult = null;
     }
     this._closePicker();
   }

@@ -22,6 +22,10 @@ def test_sidebar_panel_is_packaged_with_analysis_and_merge_ui() -> None:
     assert 'id="export-source"' in panel
     assert 'id="transfer-file"' in panel
     assert 'id="preview-transfer"' in panel
+    assert 'id="transfer-backup-confirmed"' in panel
+    assert 'id="transfer-warnings-confirmed"' in panel
+    assert 'id="transfer-import-confirmed"' in panel
+    assert 'id="import-transfer"' in panel
     assert 'url = "/api/statfusion/import/preview"' in Path(
         "custom_components/statfusion/export.py"
     ).read_text(encoding="utf-8")
@@ -92,7 +96,7 @@ def test_sidebar_panel_module_url_has_a_version_token() -> None:
     """Force browser clients to request each shipped panel revision."""
     constants = CONSTANTS_PATH.read_text(encoding="utf-8")
 
-    assert 'PANEL_JS_VERSION = "8"' in constants
+    assert 'PANEL_JS_VERSION = "9"' in constants
     assert "statfusion-panel.js?v={PANEL_JS_VERSION}" in constants
 
 
