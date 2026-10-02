@@ -1,4 +1,4 @@
-# Cross-installation statistics transfer (planned for 1.1.0)
+# Cross-installation statistics transfer
 
 ## Goal
 
@@ -66,8 +66,9 @@ Rows retain the raw Recorder values and UTC hour starts. Optional fields such as
 `mean`, `min`, `max`, `mean_weight`, and `last_reset` are included only when
 present. `mean_type` is the Recorder mean-type code serialized as text (for
 example, `"0"` when mean statistics are absent). The export must not contain entity states, credentials, host details,
-or unrelated statistics. A format version is mandatory so future versions can
-reject or explicitly migrate incompatible files.
+or unrelated statistics. Files are limited to 250,000 rows and 64 MiB. A format
+version is mandatory so future versions can reject or explicitly migrate
+incompatible files.
 
 ## Import safety rules
 
@@ -95,12 +96,11 @@ reject or explicitly migrate incompatible files.
 1. [x] Add the versioned export package builder/parser and strict validation tests.
 2. [x] Add an admin-only authenticated export endpoint and a panel download
    control. The download uses HTTP so larger multi-year exports do not have to
-   fit in a single WebSocket service response. This exports the old
-   installation's data; the destination-side flow validates the file before writing.
+   fit in a single WebSocket service response.
 3. [x] Add panel file selection, target mapping, and read-only import preview.
 4. [x] Add the confirmed import action, collision/recheck safeguards, and
    post-import verification.
-5. Add German and English help, format documentation, and Home Assistant
+5. [x] Add German and English help, format documentation, and Home Assistant
    version compatibility checks.
 
 Each slice must use Recorder's supported statistics helpers and retain the
@@ -110,8 +110,10 @@ separately, even if both installations happen to use the same ID.
 
 ## Compatibility note
 
-Home Assistant's Recorder import metadata evolves. Keep the on-disk format
-independent of transient Recorder internals, then construct import metadata
-from the destination statistic after compatibility checks. Test against the
-minimum supported Home Assistant version and current Core; update this adapter
-when Core changes required metadata fields.
+StatFusion declares Home Assistant 2024.10.0 as its minimum version. CI smoke
+tests the Recorder and admin-service APIs on that minimum and on the latest
+Home Assistant release. Live transfer behavior still needs end-to-end
+verification on a running installation before the 1.1.0 release. Recorder import
+metadata evolves, so the on-disk format stays independent of Recorder internals;
+import metadata always comes from the destination statistic after compatibility
+checks.

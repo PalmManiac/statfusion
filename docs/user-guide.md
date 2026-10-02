@@ -6,8 +6,8 @@ entity's history to include the old entity's hourly values.
 
 ## Before you start
 
-- Create a full Home Assistant backup and make sure it is available for
-  restoration.
+- Create a full Home Assistant backup and verify that it includes the Recorder
+  database. Back up an external Recorder database separately.
 - Identify the older statistic as the **source** and the statistic that should
   receive its missing hours as the **target**.
 - Confirm that both statistics represent the same measurement and energy flow.
@@ -58,6 +58,31 @@ preserves the source and existing target rows, waits for Recorder, and verifies
 the imported rows. If even one timestamp already exists in the target or
 verification fails, the action reports an error. Restore the backup if the
 result is not what you expected.
+
+## Transfer statistics between Home Assistant installations (1.1.0)
+
+StatFusion 1.1.0 can move one statistic's hourly long-term data from an older
+installation to a newer one. The installations do not connect: the source
+installation downloads a JSON export, which you transfer manually to the target
+installation.
+
+1. On the source installation, choose the statistic and select **Export source**.
+2. On the target installation, choose the existing destination statistic, select
+   the exported JSON file, and create the import preview.
+3. Review the source and target, units, data type, time range, gaps, and findings.
+   A source and target with the same ID can still be separate statistics on
+   different installations.
+4. Create a full Home Assistant backup and verify that it includes the Recorder
+   database; back up an external Recorder database separately. Confirm the backup,
+   review the warnings and mapping, then explicitly confirm the import.
+5. Wait for the verified completion result.
+
+StatFusion blocks incompatible statistics and any hour that already exists in
+the target. It does not overwrite existing target hours, convert units, or
+change the exported values. Keep the export file until you have checked the
+target history. The JSON can contain sensitive household usage history; store
+and transfer it accordingly. Imports are limited to 250,000 hourly rows and a
+64 MiB file.
 
 ## Developer Tools actions
 

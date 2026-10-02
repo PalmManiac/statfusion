@@ -21,6 +21,13 @@ def test_manifest_has_required_custom_integration_metadata() -> None:
     assert manifest["codeowners"] == ["@PalmManiac"]
 
 
+def test_hacs_manifest_declares_minimum_home_assistant_version() -> None:
+    """Declare compatibility in HACS metadata, not the HA integration manifest."""
+    hacs_manifest = json.loads(Path("hacs.json").read_text(encoding="utf-8"))
+
+    assert hacs_manifest["homeassistant"] == "2024.10.0"
+
+
 def test_release_documentation_is_linked_and_does_not_call_review_approval() -> None:
     """Keep release guides discoverable and use cautious analysis wording."""
     readme = Path("README.md").read_text(encoding="utf-8")
