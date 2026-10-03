@@ -125,6 +125,15 @@ const EN_TRANSLATIONS = {
   "Kompatibilität prüfen": "Check compatibility",
   "Statistiken zusammenführen": "Merge statistics",
   "Prüfe zwei Langzeitstatistiken und übernimm freigegebene Stundenwerte nach Bestätigung.": "Check two long-term statistics, then merge approved hourly values after confirmation.",
+  "Langzeitstatistiken sicher prüfen, zusammenführen oder zwischen Installationen übertragen.": "Review and merge long-term statistics or transfer them between installations.",
+  "Analyse und Übertragung": "Analysis and transfer",
+  "Langzeitstatistiken verwalten": "Manage long-term statistics",
+  "Arbeitsbereich 1": "Workspace 1",
+  "In dieser Installation zusammenführen": "Merge on this installation",
+  "Recorder-Statistiken": "Recorder statistics",
+  "Arbeitsbereich 2": "Workspace 2",
+  "JSON-Datei": "JSON file",
+  "Datei auswählen, Ziel prüfen und alle Import-Schritte gemeinsam in einem Dialog durchgehen.": "Choose a file, review the target, and complete the import steps together in one dialog.",
   "Analyse": "Analysis",
   "Schritt 1": "Step 1",
   "Statistiken auswählen": "Select statistics",
@@ -204,6 +213,7 @@ const EN_TRANSLATIONS = {
   "Hinweise geprüft": "Warnings reviewed",
   "Import bestätigen": "Confirm import",
   "Ich habe vor dem Import ein vollständiges Home-Assistant-Backup erstellt und geprüft, dass es verfügbar ist.": "I created a full Home Assistant backup before importing and verified that it is available.",
+  "Erstelle ein vollständiges Home-Assistant-Backup und prüfe, dass es verfügbar ist. StatFusion verändert historische Recorder-Daten dauerhaft; die Nutzung erfolgt auf eigene Gefahr. Für Datenverlust oder Folgeschäden übernimmt das Projektteam – soweit gesetzlich zulässig – keine Haftung.": "Create a full Home Assistant backup and verify that it is available. StatFusion permanently changes historical Recorder data; use it at your own risk. To the extent permitted by law, the project team accepts no liability for data loss or consequential damages.",
   "Ich habe alle Hinweise geprüft und bestätige die Zuordnung von Datei und Zielstatistik.": "I reviewed all findings and confirm the file-to-target mapping.",
   "Ich bestätige den Import der angezeigten Stunden in die Zielstatistik.": "I confirm importing the displayed hours into the target statistic.",
   "Stundenwerte jetzt importieren": "Import hourly values now",
@@ -214,6 +224,23 @@ const EN_TRANSLATIONS = {
   "Backup erforderlich": "Backup required",
   "Importierte Stunden:": "Imported hours:",
   "Der Import konnte nicht bestätigt werden. Prüfe Recorder-Protokolle und Zielstatistik, bevor du es erneut versuchst.": "The import could not be verified. Check Recorder logs and the target statistic before trying again.",
+  "Geführte Übertragung": "Guided transfer",
+  "Statistik importieren": "Import statistics",
+  "Übertragung zwischen Installationen": "Transfer between installations",
+  "Exportiere auf dem alten System eine Statistik oder importiere eine Exportdatei auf diesem System.": "Export a statistic on the old system or import an export file on this system.",
+  "Quellstatistik für den Export": "Source statistic to export",
+  "Export starten": "Start export",
+  "Übertragung öffnen": "Open transfer",
+  "Datei und Ziel auswählen": "Choose file and target",
+  "Die Exportdatei wird nur auf dieser Home-Assistant-Installation geprüft.": "The export file is checked only on this Home Assistant installation.",
+  "StatFusion-JSON-Datei": "StatFusion JSON file",
+  "Vorhandene Zielstatistik": "Existing target statistic",
+  "Noch kein Ziel ausgewählt": "No target selected yet",
+  "Vorschau erstellen": "Create preview",
+  "Vorschau und Hinweise prüfen": "Review preview and findings",
+  "Hier siehst du den Umfang und das Ergebnis der Prüfung, bevor du etwas importierst.": "Review the scope and check results before importing anything.",
+  "Schließen ändert keine Recorder-Daten.": "Closing does not change Recorder data.",
+  "Schließen": "Close",
 };
 
 class StatFusionPanel extends HTMLElement {
@@ -223,6 +250,8 @@ class StatFusionPanel extends HTMLElement {
     this._statistics = [];
     this._source = "";
     this._target = "";
+    this._exportStatistic = "";
+    this._transferTarget = "";
     this._result = null;
     this._error = "";
     this._copyStatus = "";
@@ -243,6 +272,7 @@ class StatFusionPanel extends HTMLElement {
     this._transferError = "";
     this._transferImportLoading = false;
     this._transferImportResult = null;
+    this._transferDialogOpen = false;
   }
 
   set hass(value) {
@@ -407,7 +437,8 @@ class StatFusionPanel extends HTMLElement {
   }
 
   async _exportStatistics() {
-    const source = this.shadowRoot.querySelector("#source").value.trim();
+    const source = this.shadowRoot.querySelector("#export-source-id").value.trim();
+    this._exportStatistic = source;
     this._exportStatus = "";
     this._exportError = "";
     if (!source) {
@@ -455,8 +486,7 @@ class StatFusionPanel extends HTMLElement {
   }
 
   async _previewTransfer() {
-    const target = this.shadowRoot.querySelector("#target").value.trim();
-    this._target = target;
+    const target = this._transferTarget.trim();
     this._transferError = "";
     this._transferPreview = null;
     this._transferImportResult = null;
@@ -507,7 +537,7 @@ class StatFusionPanel extends HTMLElement {
     const confirm = this.shadowRoot.querySelector("#transfer-import-confirmed")?.checked;
     if (!backup || !warnings || !confirm || this._transferPreview?.decision !== "ready_for_review") return;
 
-    const target = this.shadowRoot.querySelector("#target").value.trim();
+    const target = this._transferTarget.trim();
     const accessToken = this._accessToken();
     if (!this._transferFile || !target || !accessToken) {
       this._transferError = "Der Import konnte nicht bestätigt werden. Prüfe Recorder-Protokolle und Zielstatistik, bevor du es erneut versuchst.";
@@ -583,6 +613,43 @@ class StatFusionPanel extends HTMLElement {
       <label class="confirm-check"><input id="transfer-warnings-confirmed" type="checkbox"><span>Ich habe alle Hinweise geprüft und bestätige die Zuordnung von Datei und Zielstatistik.</span></label>
       <label class="confirm-check"><input id="transfer-import-confirmed" type="checkbox"><span>Ich bestätige den Import der angezeigten Stunden in die Zielstatistik.</span></label>
       <button class="transfer-button" id="import-transfer" type="button" ${disabled}>${this._transferImportLoading ? "Recorder importiert …" : "Stundenwerte jetzt importieren"}</button>`;
+  }
+
+  _transferDialogTemplate() {
+    const closeDisabled = this._transferImportLoading ? "disabled" : "";
+    return `
+      <dialog class="workflow-dialog" id="transfer-dialog" aria-labelledby="transfer-dialog-title">
+        <header class="dialog-header">
+          <div><span class="eyebrow">Geführte Übertragung</span><h2 id="transfer-dialog-title">Statistik importieren</h2></div>
+          <button class="close-dialog" id="close-transfer-dialog" type="button" aria-label="Dialog schließen" ${closeDisabled}>×</button>
+        </header>
+        <div class="dialog-content">
+          <section class="dialog-step">
+            <div class="step-title"><span>1</span><div><strong>Datei und Ziel auswählen</strong><p>Die Exportdatei wird nur auf dieser Home-Assistant-Installation geprüft.</p></div></div>
+            <div class="transfer-controls">
+              <label>StatFusion-JSON-Datei<input id="transfer-file" type="file" accept=".json,application/json"></label>
+              <div class="transfer-target"><span class="field-label">Vorhandene Zielstatistik</span><div class="input-row"><output id="transfer-target-value">${escapeHtml(this._transferTarget || "Noch kein Ziel ausgewählt")}</output><button class="picker-trigger" type="button" data-picker-role="transfer-target">Liste</button></div></div>
+            </div>
+            <p class="file-selection" aria-live="polite">${escapeHtml(this._transferFile?.name || "Keine Datei ausgewählt")}</p>
+            <button class="transfer-button" id="preview-transfer" type="button" ${this._transferLoading ? "disabled" : ""}>${this._transferLoading ? "Vorschau wird geprüft…" : "Vorschau erstellen"}</button>
+            ${this._transferError ? `<p class="transfer-error" role="alert">${escapeHtml(this._transferError)}</p>` : ""}
+          </section>
+          ${this._transferPreview ? `<section class="dialog-step"><div class="step-title"><span>2</span><div><strong>Vorschau und Hinweise prüfen</strong><p>Hier siehst du den Umfang und das Ergebnis der Prüfung, bevor du etwas importierst.</p></div></div>${this._transferPreviewTemplate()}</section>` : ""}
+        </div>
+        <footer class="dialog-footer"><span class="read-only">Schließen ändert keine Recorder-Daten.</span><button class="secondary-button" id="cancel-transfer-dialog" type="button" ${closeDisabled}>Schließen</button></footer>
+      </dialog>`;
+  }
+
+  _openTransferDialog() {
+    this._transferDialogOpen = true;
+    this._render();
+    this.shadowRoot.querySelector("#transfer-file")?.focus();
+  }
+
+  _closeTransferDialog() {
+    if (this._transferImportLoading) return;
+    this._transferDialogOpen = false;
+    this._render();
   }
 
   _rememberAnalysis() {
@@ -811,11 +878,13 @@ class StatFusionPanel extends HTMLElement {
       <style>
         :host { display:block; min-height:100%; color:var(--primary-text-color); background:var(--primary-background-color); font-family:var(--primary-font-family, sans-serif); }
         main { max-width:1240px; margin:0 auto; padding:22px 24px 36px; }
+        .workflow-grid { display:grid; gap:16px; grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
         header { display:flex; gap:16px; justify-content:space-between; align-items:flex-start; margin-bottom:18px; }
         h1,h2,p { margin:0; } h1 { font-size:27px; line-height:1.2; letter-spacing:-0.02em; } h2 { font-size:20px; line-height:1.25; }
         .subtitle { color:var(--secondary-text-color); font-size:15px; margin-top:5px; }
         .chip { background:var(--secondary-background-color); border-radius:18px; color:var(--secondary-text-color); font-size:13px; font-weight:600; padding:7px 12px; white-space:nowrap; }
-        .workspace,.result { background:var(--card-background-color); border:1px solid var(--divider-color); border-radius:12px; box-shadow:var(--ha-card-box-shadow, none); padding:17px; }
+        .workspace,.result { background:var(--card-background-color); border:1px solid var(--divider-color); border-radius:12px; box-shadow:var(--ha-card-box-shadow, 0 2px 8px rgb(0 0 0 / 12%)); padding:19px; }
+        .merge-workspace { border-top:3px solid var(--primary-color); }.transfer-workspace { border-top:3px solid var(--accent-color, #00a7d8); }.workspace-description { color:var(--secondary-text-color); font-size:14px; line-height:1.45; margin-top:-4px; }.field-label { color:var(--secondary-text-color); display:block; font-size:14px; font-weight:600; margin-bottom:7px; }.export-controls { align-items:end; display:grid; gap:10px; grid-template-columns:minmax(0,1fr) auto; margin-top:15px; }.export-controls label { min-width:0; }.export-selection { display:flex; gap:8px; }.export-selection input { min-width:0; }.transfer-launch { align-items:center; background:var(--secondary-background-color); border:1px solid var(--divider-color); border-radius:9px; display:flex; gap:12px; justify-content:space-between; margin-top:14px; padding:12px; }.transfer-launch p { color:var(--secondary-text-color); font-size:13px; line-height:1.35; margin:0; }.section-divider { border:0; border-top:1px solid var(--divider-color); margin:16px 0; }.dashboard-status { align-items:center; color:var(--secondary-text-color); display:flex; gap:8px; font-size:13px; margin-top:14px; }.dashboard-status::before { background:var(--primary-color); border-radius:50%; content:""; flex:none; height:8px; width:8px; }
         .workspace-title { display:flex; gap:12px; align-items:center; justify-content:space-between; margin-bottom:13px; } .eyebrow,.card-label { color:var(--secondary-text-color); font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
         .selection { display:grid; grid-template-columns:1fr 42px 1fr; gap:12px; align-items:end; }
         label { color:var(--secondary-text-color); display:grid; font-size:14px; font-weight:600; gap:7px; } input { box-sizing:border-box; background:var(--input-fill-color, var(--secondary-background-color)); border:1px solid var(--input-idle-line-color, var(--divider-color)); border-radius:8px; color:var(--primary-text-color); font:inherit; padding:12px; width:100%; } input:focus { border-color:var(--primary-color); outline:2px solid color-mix(in srgb, var(--primary-color) 25%, transparent); }.input-row { display:flex; gap:8px; }.input-row input { min-width:0; }.picker-trigger { background:var(--secondary-background-color); border:1px solid var(--divider-color); border-radius:8px; color:var(--primary-text-color); cursor:pointer; font:inherit; font-weight:700; padding:0 12px; white-space:nowrap; }.picker-trigger:hover { border-color:#0878d1; color:#0878d1; }.arrow { color:var(--primary-color); font-size:25px; line-height:45px; text-align:center; }
@@ -823,7 +892,7 @@ class StatFusionPanel extends HTMLElement {
         .actions { display:flex; align-items:center; gap:10px; margin-top:14px; flex-wrap:wrap; } #analyze,.export-button { appearance:none; border:0; border-radius:8px; cursor:pointer; font:inherit; font-weight:700; padding:10px 15px; } #analyze { background:#0878d1; box-shadow:0 1px 2px rgb(0 0 0 / 18%); color:#fff; } #analyze:hover { background:#0669b6; } #analyze:focus-visible,.export-button:focus-visible { outline:3px solid color-mix(in srgb, #0878d1 35%, transparent); outline-offset:2px; } #analyze:disabled,.export-button:disabled { cursor:wait; opacity:.65; } #analyze:disabled { background:#6c8cab; } .export-button { background:var(--secondary-background-color); border:1px solid var(--divider-color); color:var(--primary-text-color); }.export-button:hover:not(:disabled) { border-color:#0878d1; color:#0878d1; } .read-only { color:var(--secondary-text-color); font-size:13px; }.export-status { color:var(--success-color, #2e7d32); font-size:13px; margin-top:9px; }.export-error { color:var(--error-color); font-size:13px; margin-top:9px; }
         .error { background:var(--error-color); border-radius:8px; color:var(--text-primary-color, white); margin-top:16px; padding:11px 13px; } .result { border-top:3px solid var(--primary-color); margin-top:22px; } .result.blocked { border-top-color:var(--error-color); } .result-heading,.result-actions { align-items:center; display:flex; justify-content:space-between; } .result-actions { gap:9px; }.copy-result { background:transparent; border:1px solid var(--divider-color); border-radius:7px; color:var(--primary-text-color); cursor:pointer; font:inherit; font-size:13px; font-weight:700; padding:7px 10px; }.copy-result:hover { border-color:#0878d1; color:#0878d1; }.copy-result:focus-visible { outline:3px solid color-mix(in srgb, #0878d1 35%, transparent); outline-offset:2px; }.result.ready .chip { color:var(--success-color, #2e7d32); } .result p { color:var(--secondary-text-color); margin-top:8px; }.copy-status { color:var(--success-color, #2e7d32); font-size:13px; font-weight:700; }
         .result-layout { display:grid; grid-template-columns:minmax(0, 1.2fr) minmax(300px, .8fr); gap:14px; margin-top:14px; }.result-primary,.result-secondary { align-content:start; display:grid; gap:12px; }.result-layout .assessment,.result-layout .timeline,.result-layout .stat-grid,.result-layout .findings,.result-layout .review-plan { margin-top:0; }.result-layout .assessment-grid { gap:8px; margin-top:8px; }.result-layout .assessment-card { min-height:76px; padding:11px; }.result-layout .assessment-card strong { font-size:16px; }.result-layout .assessment-card p { font-size:12px; line-height:1.3; margin-top:4px; }.result-layout .timeline { padding:13px; }.result-layout .timeline-track { margin-top:11px; }.result-layout .timeline-details { gap:8px; margin-top:9px; }.result-layout .timeline-details strong { font-size:12px; }.result-layout .stat-grid { grid-template-columns:1fr; gap:8px; }.result-layout .stat-card { padding:12px; }.result-layout .stat-card strong { font-size:13px; }.result-layout dl { gap:6px; grid-template-columns:1fr 1fr; margin-top:9px; }.result-layout dl div { display:grid; gap:2px; justify-content:initial; }.result-layout dd { text-align:left; }.result-layout .findings { gap:6px; }.result-layout .finding { font-size:13px; padding:9px; }
-        .analysis-history { background:var(--card-background-color); border:1px solid var(--divider-color); border-radius:10px; box-shadow:var(--ha-card-box-shadow, none); margin-top:12px; padding:0 14px; }.analysis-history summary,.review-plan summary { align-items:center; cursor:pointer; display:flex; gap:14px; justify-content:space-between; list-style:none; padding:13px 0; }.analysis-history summary::-webkit-details-marker,.review-plan summary::-webkit-details-marker { display:none; }.analysis-history summary > span:first-child,.review-plan summary > span:first-child { font-size:15px; font-weight:700; }.analysis-history summary .eyebrow,.review-plan summary .eyebrow { display:block; margin-bottom:2px; }.analysis-history summary > span:last-child,.review-plan summary > span:last-child { color:var(--secondary-text-color); font-size:12px; text-align:right; }.history-list { border-top:1px solid var(--divider-color); display:grid; gap:7px; padding:10px 0 13px; }.history-entry { align-items:center; background:var(--secondary-background-color); border-left:3px solid var(--primary-color); border-radius:8px; display:flex; gap:12px; justify-content:space-between; padding:9px 10px; }.history-entry.blocked { border-left-color:var(--error-color); }.history-entry > div:first-child { align-items:center; display:flex; font-family:var(--code-font-family, monospace); font-size:12px; gap:7px; min-width:0; }.history-entry strong { overflow-wrap:anywhere; }.history-entry > div:first-child span { color:var(--secondary-text-color); }.history-actions { align-items:center; display:flex; flex:0 0 auto; gap:9px; }.history-actions > span { color:var(--secondary-text-color); font-size:11px; }.reuse-analysis { background:transparent; border:1px solid var(--divider-color); border-radius:7px; color:var(--primary-text-color); cursor:pointer; font:inherit; font-size:12px; font-weight:700; padding:6px 8px; }.reuse-analysis:hover { border-color:#0878d1; color:#0878d1; }
+        .analysis-history { background:var(--card-background-color); border:1px solid var(--divider-color); border-radius:10px; box-shadow:var(--ha-card-box-shadow, none); margin-top:16px; padding:0 14px; }.analysis-history summary,.review-plan summary { align-items:center; cursor:pointer; display:flex; gap:14px; justify-content:space-between; list-style:none; padding:13px 0; }.analysis-history summary::-webkit-details-marker,.review-plan summary::-webkit-details-marker { display:none; }.analysis-history summary > span:first-child,.review-plan summary > span:first-child { font-size:15px; font-weight:700; }.analysis-history summary .eyebrow,.review-plan summary .eyebrow { display:block; margin-bottom:2px; }.analysis-history summary > span:last-child,.review-plan summary > span:last-child { color:var(--secondary-text-color); font-size:12px; text-align:right; }.history-list { border-top:1px solid var(--divider-color); display:grid; gap:7px; padding:10px 0 13px; }.history-entry { align-items:center; background:var(--secondary-background-color); border-left:3px solid var(--primary-color); border-radius:8px; display:flex; gap:12px; justify-content:space-between; padding:9px 10px; }.history-entry.blocked { border-left-color:var(--error-color); }.history-entry > div:first-child { align-items:center; display:flex; font-family:var(--code-font-family, monospace); font-size:12px; gap:7px; min-width:0; }.history-entry strong { overflow-wrap:anywhere; }.history-entry > div:first-child span { color:var(--secondary-text-color); }.history-actions { align-items:center; display:flex; flex:0 0 auto; gap:9px; }.history-actions > span { color:var(--secondary-text-color); font-size:11px; }.reuse-analysis { background:transparent; border:1px solid var(--divider-color); border-radius:7px; color:var(--primary-text-color); cursor:pointer; font:inherit; font-size:12px; font-weight:700; padding:6px 8px; }.reuse-analysis:hover { border-color:#0878d1; color:#0878d1; }
         .stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:20px; }.stat-card { background:var(--secondary-background-color); border:1px solid var(--divider-color); border-radius:9px; border-top:3px solid var(--primary-color); padding:16px; }.stat-card.target { border-top-color:var(--accent-color, #00a7d8); }.stat-card strong { display:block; font-family:var(--code-font-family, monospace); font-size:15px; margin-top:6px; overflow-wrap:anywhere; } dl { display:grid; gap:9px; margin:16px 0 0; } dl div { display:flex; gap:12px; justify-content:space-between; } dt { color:var(--secondary-text-color); } dd { margin:0; text-align:right; }
         .assessment { margin-top:20px; }.assessment-heading { display:flex; flex-direction:column; gap:4px; }.assessment-heading strong { font-size:17px; }.assessment-grid { display:grid; gap:12px; grid-template-columns:repeat(3, 1fr); margin-top:12px; }.assessment-card { background:var(--secondary-background-color); border:1px solid var(--divider-color); border-left:3px solid var(--primary-color); border-radius:9px; padding:14px; }.assessment-card.warning { border-left-color:var(--warning-color, #f6a700); }.assessment-card.error { border-left-color:var(--error-color); }.assessment-card span { color:var(--secondary-text-color); display:block; font-size:12px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; }.assessment-card strong { display:block; font-size:17px; margin-top:4px; }.assessment-card p { font-size:13px; line-height:1.4; margin-top:6px; }
         .timeline { background:var(--secondary-background-color); border:1px solid var(--divider-color); border-radius:9px; margin-top:20px; padding:16px; }.timeline-heading { display:flex; flex-direction:column; gap:4px; }.timeline-heading strong { font-size:17px; }.timeline-track { align-items:center; display:grid; grid-template-columns:minmax(0, 1fr) 54px minmax(0, 1fr); margin-top:16px; }.timeline-segment { background:#0878d1; border-radius:6px; color:#fff; font-size:13px; font-weight:700; padding:10px 12px; text-align:center; }.timeline-segment.target { background:var(--accent-color, #00a7d8); }.timeline-connector { background:var(--primary-color); height:4px; }.timeline.gap .timeline-connector { background:var(--warning-color, #f6a700); }.timeline.overlap .timeline-connector,.timeline.reversed .timeline-connector { background:var(--error-color); }.timeline-details { display:grid; gap:12px; grid-template-columns:1fr 1.25fr 1fr; margin-top:13px; }.timeline-details div { display:grid; gap:3px; }.timeline-details div:last-child { text-align:right; }.timeline-details span { color:var(--secondary-text-color); font-size:12px; }.timeline-details strong { font-size:13px; }.timeline-relation { text-align:center; }.timeline-relation strong { font-family:var(--primary-font-family, sans-serif); }
@@ -833,50 +902,69 @@ class StatFusionPanel extends HTMLElement {
         .safety-notice { background:color-mix(in srgb, var(--error-color, #c62828) 9%, var(--card-background-color)); border:1px solid color-mix(in srgb, var(--error-color, #c62828) 38%, var(--divider-color)); border-left:4px solid var(--error-color, #c62828); border-radius:9px; margin-bottom:14px; padding:13px 15px; }.safety-notice strong { color:var(--error-color, #c62828); display:block; }.safety-notice p { line-height:1.4; margin-top:5px; }.safety-notice p:last-child { font-weight:600; }
         dialog.picker { background-color:var(--card-background-color, var(--primary-background-color, #202124)); border:1px solid var(--divider-color, #555); border-radius:12px; box-shadow:0 20px 60px rgb(0 0 0 / 55%); box-sizing:border-box; color:var(--primary-text-color); inset:0; margin:auto; max-height:calc(100dvh - 40px); max-width:660px; overflow:hidden; padding:22px; position:fixed; width:calc(100% - 40px); }
         dialog.picker::backdrop { background:rgb(0 0 0 / 70%); }
+        dialog.workflow-dialog { background:var(--card-background-color, var(--primary-background-color)); border:1px solid var(--divider-color); border-radius:14px; box-shadow:0 20px 70px rgb(0 0 0 / 55%); box-sizing:border-box; color:var(--primary-text-color); display:flex; flex-direction:column; inset:0; margin:auto; max-height:min(92dvh, 920px); max-width:min(860px, calc(100vw - 32px)); overflow:hidden; padding:0; position:fixed; width:100%; }
+        dialog.workflow-dialog:not([open]) { display:none; }
+        dialog.workflow-dialog::backdrop { background:rgb(0 0 0 / 68%); backdrop-filter:blur(2px); }
+        .dialog-header,.dialog-footer { align-items:center; background:var(--card-background-color); display:flex; flex:none; gap:14px; justify-content:space-between; padding:17px 20px; }.dialog-header { border-bottom:1px solid var(--divider-color); margin-bottom:0; }.dialog-header h2 { margin-top:4px; }.close-dialog { background:transparent; border:0; color:var(--secondary-text-color); cursor:pointer; font-size:30px; line-height:30px; padding:3px 7px; }.close-dialog:disabled { cursor:wait; opacity:.45; }.dialog-content { min-height:0; overflow:auto; padding:18px 20px; }.dialog-step + .dialog-step { border-top:1px solid var(--divider-color); margin-top:20px; padding-top:18px; }.step-title { align-items:flex-start; display:flex; gap:11px; margin-bottom:13px; }.step-title > span { align-items:center; background:var(--primary-color); border-radius:50%; color:var(--text-primary-color, white); display:flex; flex:none; font-size:13px; font-weight:700; height:25px; justify-content:center; width:25px; }.step-title strong { display:block; font-size:15px; }.step-title p { color:var(--secondary-text-color); font-size:13px; line-height:1.4; margin-top:3px; }.transfer-target { flex:1 1 260px; min-width:0; }.transfer-target .input-row { align-items:stretch; }.transfer-target output { align-items:center; background:var(--input-fill-color, var(--secondary-background-color)); border:1px solid var(--input-idle-line-color, var(--divider-color)); border-radius:8px; display:flex; min-height:44px; min-width:0; overflow-wrap:anywhere; padding:8px 11px; width:100%; }.file-selection { color:var(--secondary-text-color); font-size:13px; margin:9px 0 12px; }.dialog-footer { border-top:1px solid var(--divider-color); }.secondary-button { background:var(--secondary-background-color); border:1px solid var(--divider-color); border-radius:8px; color:var(--primary-text-color); cursor:pointer; font:inherit; font-weight:700; padding:9px 14px; }.secondary-button:disabled { cursor:wait; opacity:.5; }.dialog-footer .read-only { flex:1; }
         .picker-heading { align-items:flex-start; display:flex; justify-content:space-between; margin-bottom:17px; }.close-picker { background:transparent; border:0; color:var(--secondary-text-color); cursor:pointer; font-size:28px; line-height:28px; padding:0 5px; }.picker-count { color:var(--secondary-text-color); font-size:13px; margin:11px 0; }.picker-options { border:1px solid var(--divider-color); border-radius:8px; max-height:min(420px, calc(100dvh - 230px)); overflow:auto; }.picker-option { background:transparent; border:0; border-bottom:1px solid var(--divider-color); color:var(--primary-text-color); cursor:pointer; display:flex; font-family:var(--code-font-family, monospace); font-size:14px; font-weight:400; justify-content:space-between; padding:13px; text-align:left; width:100%; }.picker-option:hover { background:var(--secondary-background-color); }.picker-option span:last-child { color:#0878d1; font-family:var(--primary-font-family, sans-serif); font-size:12px; font-weight:700; }.picker-option:last-child { border-bottom:0; }.empty { color:var(--secondary-text-color); margin:0; padding:18px; }
-        @media (max-width:820px) { .result-layout { grid-template-columns:1fr; }.result-layout .stat-grid { grid-template-columns:1fr 1fr; }.result-layout dl { grid-template-columns:1fr; } }
-        @media (max-width:680px) { main { padding:18px 14px 30px; } header,.selection { display:block; } header .chip { display:inline-block; margin-top:14px; } .result-heading,.history-entry { align-items:flex-start; flex-direction:column; gap:10px; }.result-actions { align-items:flex-end; flex-direction:column; } .history-actions { width:100%; }.history-actions > span { flex:1; }.arrow { display:none; } label + .arrow + label { margin-top:14px; }.assessment-grid,.stat-grid,.timeline-details,.result-layout .stat-grid { grid-template-columns:1fr; }.timeline-details div:last-child,.timeline-relation { text-align:left; } .workspace,.result { padding:14px; } dialog.picker { padding:17px; width:calc(100% - 24px); } }
+        @media (max-width:900px) { .workflow-grid { grid-template-columns:1fr; }.result-layout { grid-template-columns:1fr; }.result-layout .stat-grid { grid-template-columns:1fr 1fr; }.result-layout dl { grid-template-columns:1fr; } }
+        @media (max-width:680px) { main { padding:18px 14px 30px; } header,.selection { display:block; } header .chip { display:inline-block; margin-top:14px; } .result-heading,.history-entry { align-items:flex-start; flex-direction:column; gap:10px; }.result-actions { align-items:flex-end; flex-direction:column; } .history-actions { width:100%; }.history-actions > span { flex:1; }.arrow { display:none; } label + .arrow + label { margin-top:14px; }.assessment-grid,.stat-grid,.timeline-details,.result-layout .stat-grid { grid-template-columns:1fr; }.timeline-details div:last-child,.timeline-relation { text-align:left; } .workspace,.result { padding:14px; } dialog.picker { padding:17px; width:calc(100% - 24px); } dialog.workflow-dialog { max-height:94dvh; max-width:calc(100vw - 16px); }.dialog-header,.dialog-footer { padding:14px; }.dialog-content { padding:14px; }.export-controls { grid-template-columns:1fr; }.transfer-launch { align-items:stretch; flex-direction:column; } }
         @media (max-width:680px) { .transfer-preview-grid { grid-template-columns:1fr; } }
       </style>
       <main>
         <header>
-          <div><h1>Statistiken zusammenführen</h1><p class="subtitle">Prüfe zwei Langzeitstatistiken und übernimm freigegebene Stundenwerte nach Bestätigung.</p></div>
-          <span class="chip">Analyse</span>
+          <div><h1>Langzeitstatistiken verwalten</h1><p class="subtitle">Langzeitstatistiken sicher prüfen, zusammenführen oder zwischen Installationen übertragen.</p></div>
+          <span class="chip">Analyse und Übertragung</span>
         </header>
-        <section class="workspace">
-          <aside class="safety-notice" role="alert"><strong>Warnung</strong><p>Erstelle vor jeder Übernahme ein vollständiges Home-Assistant-Backup und prüfe, dass es verfügbar ist.</p><p>StatFusion verändert historische Recorder-Daten dauerhaft. Die Nutzung erfolgt auf eigene Gefahr. Für Datenverlust oder Folgeschäden übernimmt das Projektteam – soweit gesetzlich zulässig – keine Haftung.</p></aside>
-          <div class="workspace-title"><div><span class="eyebrow">Schritt 1</span><h2>Statistiken auswählen</h2></div></div>
-          <div class="selection">
-            <label>Quelle<span class="input-row"><input id="source" list="statistics" value="${escapeHtml(this._source)}" placeholder="sensor.alte_energie"><button class="picker-trigger" type="button" data-picker-role="source">Liste</button></span></label>
-            <div class="arrow">→</div>
-            <label>Ziel<span class="input-row"><input id="target" list="statistics" value="${escapeHtml(this._target)}" placeholder="sensor.neue_energie"><button class="picker-trigger" type="button" data-picker-role="target">Liste</button></span></label>
-          </div>
-          <datalist id="statistics">${options}</datalist>
-          <div class="actions"><button id="analyze" ${this._loading ? "disabled" : ""}>${this._loading ? "Prüfung läuft…" : "Kompatibilität prüfen"}</button><button class="export-button" id="export-source" type="button" ${this._exportLoading ? "disabled" : ""}>${this._exportLoading ? "Export läuft…" : "Quelle exportieren"}</button><span class="read-only">Die Prüfung verändert keine Daten.</span></div>
-          ${this._exportStatus ? `<p class="export-status" role="status">${this._exportStatus}</p>` : ""}
-          ${this._exportError ? `<p class="export-error" role="alert">${this._exportError}</p>` : ""}
-          ${this._error ? `<div class="error">${this._error}</div>` : ""}
-        </section>
-        <section class="workspace transfer-workspace">
-          <div class="workspace-title"><div><span class="eyebrow">Import</span><h2>Statistiken aus anderer Installation importieren</h2></div></div>
-          <p class="subtitle">Prüfe eine StatFusion-Exportdatei gegen die ausgewählte Zielstatistik. Diese Vorschau verändert keine Daten.</p>
-          <div class="transfer-controls">
-            <label>JSON-Datei auswählen<input id="transfer-file" type="file" accept=".json,application/json"></label>
-            <button class="transfer-button" id="preview-transfer" type="button" ${this._transferLoading ? "disabled" : ""}>${this._transferLoading ? "Vorschau wird geprüft…" : "Importvorschau erstellen"}</button>
-            <span class="read-only">${escapeHtml(this._transferFile?.name || "Keine Datei ausgewählt")}</span>
-          </div>
-          ${this._transferError ? `<p class="transfer-error" role="alert">${this._transferError}</p>` : ""}
-          ${this._transferPreviewTemplate()}
-        </section>
-        ${this._historyTemplate()}
+        <aside class="safety-notice" role="alert"><strong>Vor jeder Übernahme: Backup erstellen</strong><p>Erstelle ein vollständiges Home-Assistant-Backup und prüfe, dass es verfügbar ist. StatFusion verändert historische Recorder-Daten dauerhaft; die Nutzung erfolgt auf eigene Gefahr. Für Datenverlust oder Folgeschäden übernimmt das Projektteam – soweit gesetzlich zulässig – keine Haftung.</p></aside>
+        <div class="workflow-grid">
+          <section class="workspace merge-workspace">
+            <div class="workspace-title"><div><span class="eyebrow">Arbeitsbereich 1</span><h2>In dieser Installation zusammenführen</h2></div><span class="chip">Recorder-Statistiken</span></div>
+            <p class="workspace-description">Vergleiche zwei Statistiken auf dieser Installation. Die Prüfung bleibt unverbindlich und ändert noch keine Daten.</p>
+            <div class="selection">
+              <label>Quelle<span class="input-row"><input id="source" list="statistics" value="${escapeHtml(this._source)}" placeholder="sensor.alte_energie"><button class="picker-trigger" type="button" data-picker-role="source">Liste</button></span></label>
+              <div class="arrow">→</div>
+              <label>Ziel<span class="input-row"><input id="target" list="statistics" value="${escapeHtml(this._target)}" placeholder="sensor.neue_energie"><button class="picker-trigger" type="button" data-picker-role="target">Liste</button></span></label>
+            </div>
+            <datalist id="statistics">${options}</datalist>
+            <div class="actions"><button id="analyze" ${this._loading ? "disabled" : ""}>${this._loading ? "Prüfung läuft…" : "Kompatibilität prüfen"}</button><span class="read-only">Die Prüfung verändert keine Daten.</span></div>
+            ${this._error ? `<div class="error" role="alert">${this._error}</div>` : ""}
+          </section>
+          <section class="workspace transfer-workspace">
+            <div class="workspace-title"><div><span class="eyebrow">Arbeitsbereich 2</span><h2>Zwischen Installationen übertragen</h2></div><span class="chip">JSON-Datei</span></div>
+            <p class="workspace-description">Exportiere auf dem alten System eine Statistik oder importiere eine Exportdatei auf diesem System.</p>
+            <hr class="section-divider">
+            <label>Quellstatistik für den Export<span class="export-selection"><input id="export-source-id" list="statistics" value="${escapeHtml(this._exportStatistic)}" placeholder="sensor.alte_energie"><button class="picker-trigger" type="button" data-picker-role="export-source">Liste</button></span></label>
+            <div class="actions"><button class="export-button" id="export-source" type="button" ${this._exportLoading ? "disabled" : ""}>${this._exportLoading ? "Export läuft…" : "Quelle exportieren"}</button><span class="read-only">Exportiert eine geprüfte JSON-Datei.</span></div>
+            ${this._exportStatus ? `<p class="export-status" role="status">${this._exportStatus}</p>` : ""}
+            ${this._exportError ? `<p class="export-error" role="alert">${this._exportError}</p>` : ""}
+            <div class="transfer-launch"><p>Datei auswählen, Ziel prüfen und alle Import-Schritte gemeinsam in einem Dialog durchgehen.</p><button class="transfer-button" id="open-transfer-dialog" type="button">Übertragung öffnen</button></div>
+          </section>
+        </div>
         ${this._resultTemplate()}
+        ${this._historyTemplate()}
       </main>
+      ${this._transferDialogTemplate()}
       ${this._pickerTemplate()}`;
     this.shadowRoot.innerHTML = this._localize(markup);
+    const transferDialog = this.shadowRoot.querySelector("#transfer-dialog");
+    if (transferDialog && this._transferDialogOpen && !transferDialog.open) transferDialog.showModal();
     const pickerDialog = this.shadowRoot.querySelector("#picker-dialog");
     if (pickerDialog && !pickerDialog.open) pickerDialog.showModal();
     this.shadowRoot.querySelector("#analyze").addEventListener("click", () => this._analyze());
     this.shadowRoot.querySelector("#export-source").addEventListener("click", () => this._exportStatistics());
+    this.shadowRoot.querySelector("#open-transfer-dialog").addEventListener("click", () => this._openTransferDialog());
+    this.shadowRoot.querySelector("#close-transfer-dialog").addEventListener("click", () => this._closeTransferDialog());
+    this.shadowRoot.querySelector("#cancel-transfer-dialog").addEventListener("click", () => this._closeTransferDialog());
+    if (transferDialog) {
+      transferDialog.addEventListener("cancel", (event) => {
+        event.preventDefault();
+        this._closeTransferDialog();
+      });
+      transferDialog.addEventListener("click", (event) => {
+        if (event.target === transferDialog) this._closeTransferDialog();
+      });
+    }
     this.shadowRoot.querySelector("#preview-transfer").addEventListener("click", () => this._previewTransfer());
     this.shadowRoot.querySelector("#transfer-file").addEventListener("change", (event) => {
       this._transferFile = event.target.files?.[0] || null;
@@ -927,6 +1015,9 @@ class StatFusionPanel extends HTMLElement {
       this._transferPreview = null;
       this._transferImportResult = null;
     });
+    this.shadowRoot.querySelector("#export-source-id").addEventListener("input", (event) => {
+      this._exportStatistic = event.target.value;
+    });
     this.shadowRoot.querySelectorAll(".picker-trigger").forEach((trigger) => {
       trigger.addEventListener("click", () => this._openPicker(trigger.dataset.pickerRole));
     });
@@ -971,8 +1062,14 @@ class StatFusionPanel extends HTMLElement {
 
   _selectStatistic(statisticId) {
     if (this._pickerRole === "source") this._source = statisticId;
+    if (this._pickerRole === "export-source") this._exportStatistic = statisticId;
     if (this._pickerRole === "target") {
       this._target = statisticId;
+      this._transferPreview = null;
+      this._transferImportResult = null;
+    }
+    if (this._pickerRole === "transfer-target") {
+      this._transferTarget = statisticId;
       this._transferPreview = null;
       this._transferImportResult = null;
     }
@@ -981,7 +1078,11 @@ class StatFusionPanel extends HTMLElement {
 
   _pickerTemplate() {
     if (!this._pickerRole) return "";
-    const title = this._pickerRole === "source" ? "Quellstatistik auswählen" : "Zielstatistik auswählen";
+    const title = this._pickerRole === "source"
+      ? "Quellstatistik auswählen"
+      : this._pickerRole === "export-source"
+        ? "Quellstatistik für den Export"
+        : "Zielstatistik auswählen";
     const query = this._pickerQuery.toLocaleLowerCase();
     const matches = this._statistics
       .filter((statisticId) => statisticId.toLocaleLowerCase().includes(query))

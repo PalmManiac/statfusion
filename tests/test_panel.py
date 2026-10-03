@@ -26,6 +26,21 @@ def test_sidebar_panel_is_packaged_with_analysis_and_merge_ui() -> None:
     assert 'id="transfer-warnings-confirmed"' in panel
     assert 'id="transfer-import-confirmed"' in panel
     assert 'id="import-transfer"' in panel
+    assert 'id="transfer-dialog"' in panel
+    assert 'id="open-transfer-dialog"' in panel
+    assert 'id="transfer-target-value"' in panel
+    assert 'data-picker-role="transfer-target"' in panel
+    assert '_transferDialogTemplate()' in panel
+    assert 'transferDialog.showModal()' in panel
+    assert 'id="close-transfer-dialog"' in panel
+    assert 'id="cancel-transfer-dialog"' in panel
+    assert 'id="export-source-id"' in panel
+    assert 'data-picker-role="export-source"' in panel
+    assert 'class="workflow-grid"' in panel
+    assert 'class="workspace merge-workspace"' in panel
+    assert 'class="workspace transfer-workspace"' in panel
+    assert 'dialog.workflow-dialog:not([open]) { display:none; }' in panel
+    assert 'this._transferTarget.trim()' in panel
     assert 'url = "/api/statfusion/import/preview"' in Path(
         "custom_components/statfusion/export.py"
     ).read_text(encoding="utf-8")
@@ -96,7 +111,7 @@ def test_sidebar_panel_module_url_has_a_version_token() -> None:
     """Force browser clients to request each shipped panel revision."""
     constants = CONSTANTS_PATH.read_text(encoding="utf-8")
 
-    assert 'PANEL_JS_VERSION = "9"' in constants
+    assert 'PANEL_JS_VERSION = "10"' in constants
     assert "statfusion-panel.js?v={PANEL_JS_VERSION}" in constants
 
 

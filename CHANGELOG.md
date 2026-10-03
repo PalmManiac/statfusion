@@ -10,6 +10,8 @@
   values through Recorder before reporting success.
 - Add German and English transfer instructions and declare Home Assistant
   2024.10.0 as the minimum supported version.
+- Separate the same-installation merge and cross-installation transfer
+  workspaces; guide file import, preview, and confirmation in a responsive dialog.
 - End-to-end testing on a running Home Assistant instance remains pending.
 
 ## 1.0.0 – Initial release
