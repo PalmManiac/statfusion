@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.1.0 – Unreleased
+## 1.1.0 – 2026-10-03
 
 - Export one statistic's hourly long-term data to a portable JSON file and
   transfer it between Home Assistant installations.
@@ -12,7 +12,8 @@
   2024.10.0 as the minimum supported version.
 - Separate the same-installation merge and cross-installation transfer
   workspaces; guide file import, preview, and confirmation in a responsive dialog.
-- End-to-end testing on a running Home Assistant instance remains pending.
+- CI and mocked transfer-flow tests pass; a live cross-install import has not yet
+  been validated on a running Home Assistant instance.
 
 ## 1.0.0 – Initial release
 
