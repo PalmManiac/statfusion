@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.1 – 2026-10-03
+
+- Apply the active Home Assistant theme colors and font to the embedded panel.
+- Give workflow dialogs and statistic pickers opaque, theme-aware backgrounds
+  for clear contrast.
+- Strengthen dashboard section borders and accent lines for clearer separation.
+
 ## 1.1.0 – 2026-10-03
 
 - Export one statistic's hourly long-term data to a portable JSON file and
