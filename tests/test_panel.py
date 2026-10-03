@@ -31,6 +31,14 @@ def test_sidebar_panel_is_packaged_with_analysis_and_merge_ui() -> None:
     assert 'id="transfer-target-value"' in panel
     assert 'data-picker-role="transfer-target"' in panel
     assert '_transferDialogTemplate()' in panel
+    assert "_applyFrameTheme()" in panel
+    assert 'frame = window.frameElement' in panel
+    assert 'this._themeObserver.observe(frame' in panel
+    assert "--sf-surface: #fff;" in panel
+    assert "--sf-surface: #242728;" in panel
+    assert "background:var(--card-background-color, var(--sf-surface))" in panel
+    assert "border:2px solid var(--divider-color, var(--sf-divider))" in panel
+    assert "this.style.colorScheme = luminance < 128 ? \"dark\" : \"light\";" in panel
     assert 'transferDialog.showModal()' in panel
     assert 'id="close-transfer-dialog"' in panel
     assert 'id="cancel-transfer-dialog"' in panel
@@ -111,7 +119,7 @@ def test_sidebar_panel_module_url_has_a_version_token() -> None:
     """Force browser clients to request each shipped panel revision."""
     constants = CONSTANTS_PATH.read_text(encoding="utf-8")
 
-    assert 'PANEL_JS_VERSION = "10"' in constants
+    assert 'PANEL_JS_VERSION = "11"' in constants
     assert "statfusion-panel.js?v={PANEL_JS_VERSION}" in constants
 
 
