@@ -25,10 +25,10 @@ from .const import (
     SERVICE_ANALYZE,
     SERVICE_MERGE,
 )
+from .merge_plan import MergePlanError, build_merge_plan, inspect_collisions
 from .recorder_reader import (
     async_import_hourly_statistics,
     async_read_statistic_dataset,
-    async_read_statistic_snapshot,
 )
 
 _PAIR_SCHEMA = {
@@ -39,6 +39,9 @@ _ANALYZE_SCHEMA = vol.Schema(_PAIR_SCHEMA)
 _MERGE_SCHEMA = vol.Schema(
     {
         **_PAIR_SCHEMA,
+        vol.Optional("collision_resolution"): vol.In({"source", "target"}),
+        vol.Optional("expected_collision_count"): vol.All(int, vol.Range(min=0)),
+        vol.Optional("expected_collision_fingerprint"): cv.string,
         vol.Required("confirm"): vol.Boolean(),
         vol.Required("backup_confirmed"): vol.Boolean(),
         vol.Required("warnings_confirmed"): vol.Boolean(),
@@ -74,13 +77,17 @@ async def async_unload_services(hass: HomeAssistant) -> None:
 
 async def _async_handle_analyze(call: ServiceCall) -> ServiceResponse:
     """Read and analyze source and target statistic IDs."""
-    source = await async_read_statistic_snapshot(
+    source, _source_metadata, source_rows = await async_read_statistic_dataset(
         call.hass, call.data[CONF_SOURCE_STATISTIC_ID]
     )
-    target = await async_read_statistic_snapshot(
+    target, _target_metadata, target_rows = await async_read_statistic_dataset(
         call.hass, call.data[CONF_TARGET_STATISTIC_ID]
     )
-    return analyze_merge(source, target).as_dict()
+    result = analyze_merge(source, target).as_dict()
+    result["overlap"] = _collision_summary_dict(
+        inspect_collisions(source_rows, target_rows)
+    )
+    return result
 
 
 async def _async_handle_merge(call: ServiceCall) -> ServiceResponse:
@@ -118,26 +125,53 @@ async def _async_handle_merge(call: ServiceCall) -> ServiceResponse:
             "managed by the recorder."
         )
 
-    source_starts = {_row_start(row) for row in source_rows}
-    target_starts = {_row_start(row) for row in target_rows}
-    collisions = source_starts & target_starts
-    if collisions:
+    try:
+        plan = build_merge_plan(
+            source_rows,
+            target_rows,
+            call.data.get("collision_resolution"),
+        )
+    except MergePlanError as err:
+        raise HomeAssistantError(str(err)) from err
+    expected_collision_count = call.data.get("expected_collision_count")
+    expected_collision_fingerprint = call.data.get("expected_collision_fingerprint")
+    if (
+        expected_collision_count is not None
+        and expected_collision_count != plan.collision_summary.count
+    ) or (
+        expected_collision_fingerprint is not None
+        and expected_collision_fingerprint != plan.collision_summary.fingerprint
+    ):
         raise HomeAssistantError(
-            f"Merge blocked: {len(collisions)} source timestamps already exist "
-            "in the target."
+            "The overlapping hours changed after analysis. Run the "
+            "compatibility check again before merging."
         )
 
-    import_rows = [_prepare_import_row(row) for row in source_rows]
-    await async_import_hourly_statistics(call.hass, target_metadata, import_rows)
+    import_rows = [_prepare_import_row(row) for row in plan.rows_to_import]
+    if import_rows:
+        await async_import_hourly_statistics(call.hass, target_metadata, import_rows)
 
     _verified_snapshot, _verified_metadata, verified_rows = (
         await async_read_statistic_dataset(call.hass, target_id)
     )
     target_rows_by_start = {_row_start(row): row for row in verified_rows}
-    if not all(
+    imported_rows_match = all(
         _row_matches(source_row, target_rows_by_start.get(_row_start(source_row)))
-        for source_row in source_rows
-    ):
+        for source_row in plan.rows_to_import
+    )
+    preserved_target_collisions_match = (
+        plan.collision_summary.count == 0
+        or call.data.get("collision_resolution") == "source"
+        or all(
+            _row_matches(
+                target_row,
+                target_rows_by_start.get(_row_start(target_row)),
+            )
+            for target_row in target_rows
+            if _row_start(target_row) in plan.collision_summary.starts
+        )
+    )
+    if not imported_rows_match or not preserved_target_collisions_match:
         raise HomeAssistantError(
             "The recorder finished the import, but post-import verification failed."
         )
@@ -146,13 +180,29 @@ async def _async_handle_merge(call: ServiceCall) -> ServiceResponse:
         "status": "completed",
         "source_statistic_id": source_id,
         "target_statistic_id": target_id,
-        "imported_hours": len(source_rows),
+        "imported_hours": len(plan.rows_to_import),
+        "added_hours": plan.added_hours,
+        "replaced_hours": plan.replaced_hours,
+        "preserved_target_hours": plan.preserved_target_hours,
+        "collision_resolution": call.data.get("collision_resolution"),
         "source_preserved": True,
-        "existing_target_hours_preserved": True,
+        "existing_target_hours_preserved": plan.replaced_hours == 0,
         "summary": (
-            f"{len(source_rows)} hourly values were added to the target. "
-            "The source and existing target hours were preserved."
+            f"{plan.added_hours} new hourly values were added to the target; "
+            f"{plan.replaced_hours} overlapping hours were replaced. "
+            "The source statistic was preserved."
         ),
+    }
+
+
+def _collision_summary_dict(summary: Any) -> dict[str, Any]:
+    """Serialize overlap details for the read-only compatibility preview."""
+    return {
+        "count": summary.count,
+        "first": summary.first.isoformat() if summary.first else None,
+        "last": summary.last.isoformat() if summary.last else None,
+        "fingerprint": summary.fingerprint,
+        "source_overwrite_safe": summary.source_overwrite_safe,
     }
 
 

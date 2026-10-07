@@ -34,8 +34,15 @@ ignoriert werden können.
 
 ### Hinweise, die geprüft werden müssen
 
-- **Überschneidung oder falsche Reihenfolge:** Die Übernahme wird blockiert.
-  Wähle eine ältere Quelle und ein neueres Ziel ohne überlappende Zeiträume.
+- **Falsche Reihenfolge:** Die Übernahme wird blockiert. Wähle die ältere
+  Statistik als Quelle und die neuere als Ziel.
+- **Überschneidende Stunden:** Prüfe Anzahl und Zeitraum der identischen
+  Stunden. Wähle, ob bei diesen Stunden die Werte der alten Quelle oder des
+  neuen Ziels erhalten bleiben. Fehlende Quellstunden werden in beiden Fällen
+  ergänzt; alle anderen Zielstunden und die Quelle bleiben unverändert. Du
+  kannst vor dem Schreiben abbrechen. Die Quelle kann nicht gewinnen, wenn der
+  Recorder das gespeicherte Mittelwertgewicht dieser Stunden nicht sicher
+  ersetzen kann.
 - **Einheitenumrechnung oder inkompatible Datenformen:** Die Übernahme wird
   blockiert. StatFusion rechnet keine Werte um.
 - **Zeitlücke:** Die Übernahme kann nach Prüfung fortgesetzt werden; der
@@ -59,13 +66,12 @@ hast:
    Browser-Rückfrage.
 4. Warte auf die Erfolgsmeldung und prüfe anschließend die Zielhistorie.
 
-StatFusion prüft die Statistiken unmittelbar vor dem Schreiben erneut. Es
-kopiert die Quellstunden nur, wenn keiner ihrer Zeitpunkte bereits im Ziel
-vorhanden ist. Quelle und bestehende Zielstunden bleiben erhalten; danach wartet
-StatFusion auf den Recorder und verifiziert die übernommenen Werte. Wenn auch
-nur ein Zielzeitpunkt bereits vorhanden ist oder die Verifikation fehlschlägt,
-meldet die Aktion einen Fehler. Stelle das Backup wieder her, falls das
-Ergebnis nicht deinen Erwartungen entspricht.
+StatFusion prüft die Statistiken und exakt dieselben überschneidenden Stunden
+unmittelbar vor dem Schreiben erneut. Die gewählte Regel gilt nur für identische Stunden;
+fehlende Quellstunden werden ergänzt. Die Quelle bleibt erhalten. StatFusion
+wartet auf den Recorder und verifiziert die resultierenden Werte. Werte werden
+unverändert kopiert; Summen werden weder addiert noch normalisiert. Stelle das
+Backup wieder her, falls das Ergebnis nicht deinen Erwartungen entspricht.
 
 ## Statistiken zwischen Home-Assistant-Installationen übertragen (1.1.0)
 
@@ -117,6 +123,7 @@ data:
   backup_confirmed: true
   warnings_confirmed: true
   confirm: true
+  collision_resolution: target # nur bei überlappenden Stunden erforderlich
 ```
 
 Das Dashboard richtet sich nach der Spracheinstellung von Home Assistant und

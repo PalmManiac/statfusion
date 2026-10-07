@@ -74,6 +74,11 @@ def test_sidebar_panel_is_packaged_with_analysis_and_merge_ui() -> None:
     assert 'id="merge-confirmed"' in panel
     assert 'id="merge"' in panel
     assert "Übernahme abgeschlossen" in panel
+    assert 'name="collision-resolution" value="target"' in panel
+    assert 'name="collision-resolution" value="source"' in panel
+    assert 'name="collision-resolution" value="cancel"' in panel
+    assert "expected_collision_count: overlap.count" in panel
+    assert "expected_collision_fingerprint: overlap.fingerprint" in panel
     assert "Die Quelle und bereits vorhandene Zielstunden bleiben unverändert." in panel
     assert "mögliche Sprünge bei kumulativen Werten" in panel
     assert "vollständige Home-Assistant-Sicherung" in panel
@@ -119,7 +124,7 @@ def test_sidebar_panel_module_url_has_a_version_token() -> None:
     """Force browser clients to request each shipped panel revision."""
     constants = CONSTANTS_PATH.read_text(encoding="utf-8")
 
-    assert 'PANEL_JS_VERSION = "11"' in constants
+    assert 'PANEL_JS_VERSION = "12"' in constants
     assert "statfusion-panel.js?v={PANEL_JS_VERSION}" in constants
 
 

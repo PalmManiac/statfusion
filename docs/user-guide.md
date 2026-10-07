@@ -31,8 +31,14 @@ same meaning or that every warning is safe to ignore.
 
 ### Findings that need attention
 
-- **Overlap or wrong order:** the merge is blocked. Select an older source and
-  a newer target with no overlapping statistics range.
+- **Wrong order:** the merge is blocked. Select the older statistic as source
+  and the newer one as target.
+- **Overlapping hours:** review the exact count and time range. For identical
+  hourly timestamps, choose whether the old source values or new target values
+  should remain. Missing source hours are still added either way; all other
+  target hours and the source statistic remain unchanged. You can cancel before
+  writing. Source values are unavailable as a choice if Recorder cannot safely
+  replace the stored mean weight for those rows.
 - **Unit conversion or incompatible statistic types:** the merge is blocked;
   StatFusion never converts values.
 - **Time gap:** the merge can proceed after review, but the missing period stays
@@ -52,12 +58,11 @@ selection:
 3. Select **Merge hourly values** and approve the final browser confirmation.
 4. Wait for the success result and check the target's history.
 
-StatFusion rechecks the statistics immediately before writing. It copies the
-source rows only if none of their timestamps already exist in the target,
-preserves the source and existing target rows, waits for Recorder, and verifies
-the imported rows. If even one timestamp already exists in the target or
-verification fails, the action reports an error. Restore the backup if the
-result is not what you expected.
+StatFusion rechecks the statistics and the exact set of overlapping hours
+immediately before writing. It applies the selected rule only to identical hourly timestamps,
+adds missing source hours, preserves the source, waits for Recorder, and
+verifies the resulting rows. Values are copied as stored; sums are not added
+or normalized. Restore the backup if the result is not what you expected.
 
 ## Transfer statistics between Home Assistant installations (1.1.0)
 
@@ -107,6 +112,7 @@ data:
   backup_confirmed: true
   warnings_confirmed: true
   confirm: true
+  collision_resolution: target # required only when hourly timestamps overlap
 ```
 
 The dashboard follows Home Assistant's language setting and currently

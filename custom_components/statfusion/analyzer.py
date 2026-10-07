@@ -191,11 +191,11 @@ def _check_time_range(
     target: StatisticSnapshot,
     findings: list[AnalysisFinding],
 ) -> None:
-    """Reject overlaps and make non-contiguous handoffs explicit."""
+    """Describe overlaps for explicit per-hour resolution and note time gaps."""
     assert source.last is not None
     assert source.first is not None
     assert target.first is not None
-    if target.first <= source.first:
+    if target.first < source.first:
         findings.append(
             _error(
                 "time_range_target_starts_before_source",
@@ -208,10 +208,12 @@ def _check_time_range(
 
     if target.first <= source.last:
         findings.append(
-            _error(
+            AnalysisFinding(
                 "time_range_overlap",
-                "Source and target contain overlapping long-term-statistics time "
-                "ranges.",
+                FindingSeverity.WARNING,
+                "Source and target have overlapping time ranges. Review the exact "
+                "hours that exist in both statistics and choose which values to "
+                "keep.",
             )
         )
         return
