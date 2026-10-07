@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.2.0 – Unreleased
+## 1.2.0 – 2026-10-07
 
 - Resolve identical hourly timestamps during same-installation merges by
   keeping the old source value, keeping the new target value, or cancelling.
