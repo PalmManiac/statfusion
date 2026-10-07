@@ -26,6 +26,13 @@ def test_sidebar_panel_is_packaged_with_analysis_and_merge_ui() -> None:
     assert 'id="transfer-warnings-confirmed"' in panel
     assert 'id="transfer-import-confirmed"' in panel
     assert 'id="import-transfer"' in panel
+    assert 'name="transfer-collision-resolution" value="target"' in panel
+    assert 'name="transfer-collision-resolution" value="source"' in panel
+    assert 'name="transfer-collision-resolution" value="cancel"' in panel
+    assert "expected_collision_count" in panel
+    assert "expected_collision_fingerprint" in panel
+    assert "source_overwrite_safe" in panel
+    assert "transfer-collision-policy" in panel
     assert 'id="transfer-dialog"' in panel
     assert 'id="open-transfer-dialog"' in panel
     assert 'id="transfer-target-value"' in panel
@@ -139,7 +146,7 @@ def test_sidebar_panel_module_url_has_a_version_token() -> None:
     """Force browser clients to request each shipped panel revision."""
     constants = CONSTANTS_PATH.read_text(encoding="utf-8")
 
-    assert 'PANEL_JS_VERSION = "14"' in constants
+    assert 'PANEL_JS_VERSION = "15"' in constants
     assert "statfusion-panel.js?v={PANEL_JS_VERSION}" in constants
 
 

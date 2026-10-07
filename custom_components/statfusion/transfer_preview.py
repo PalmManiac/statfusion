@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from typing import Any
 
 from .analyzer import analyze_merge
+from .merge_plan import inspect_collisions
 from .models import (
     AnalysisDecision,
     AnalysisFinding,
@@ -46,18 +46,14 @@ def analyze_transfer_preview(
             )
         )
 
-    source_starts = {row["start"] for row in package.rows}
-    target_starts = {_row_start(row["start"]) for row in target_rows}
-    collisions = len(source_starts & target_starts)
+    collisions = inspect_collisions(list(package.rows), target_rows).count
     if collisions:
-        findings = [
-            finding for finding in findings if finding.code != "time_range_overlap"
-        ]
         findings.append(
             AnalysisFinding(
                 "transfer_timestamp_collision",
-                FindingSeverity.ERROR,
-                f"{collisions} source hour(s) already exist in the destination.",
+                FindingSeverity.WARNING,
+                f"{collisions} source hour(s) already exist in the destination. "
+                "Choose which values to keep for those hours.",
             )
         )
 
@@ -67,10 +63,3 @@ def analyze_transfer_preview(
         else AnalysisDecision.READY_FOR_REVIEW
     )
     return MergeAnalysis(source, target, decision, tuple(findings)), collisions
-
-
-def _row_start(value: datetime | float | int) -> datetime:
-    """Normalize a raw Recorder hour start to aware UTC."""
-    if isinstance(value, datetime):
-        return value.astimezone(UTC)
-    return datetime.fromtimestamp(value, tz=UTC)

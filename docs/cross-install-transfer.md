@@ -22,12 +22,15 @@ this selective transfer.
 3. StatFusion validates the file and target, then shows a read-only preview:
    source identity and metadata, target identity and metadata, date ranges,
    number of hours, gaps, overlap, and any compatibility findings.
-4. If the transfer is allowed, the user creates and confirms a full backup,
-   reviews the warnings, and explicitly confirms the write.
-5. StatFusion imports the source hours unchanged under the target statistic.
-   The original export file and all existing target hours remain untouched.
-6. StatFusion rereads the target and verifies each imported hour. The result
-   reports success only after verification.
+4. If the transfer is compatible, the user chooses whether imported or existing
+   target values should win for identical hourly timestamps. Source replacement
+   is unavailable when Recorder cannot safely preserve mean weights.
+5. The user creates and confirms a full backup, reviews warnings, and explicitly
+   confirms the write. Cancel performs no import.
+6. StatFusion imports missing source hours and applies the selected rule only to
+   collisions. All other target hours and the original export file are preserved.
+7. StatFusion rereads the target and verifies imported hours and preserved
+   collision values. The result reports success only after verification.
 
 The file can be moved manually by download/upload or removable media; StatFusion
 does not need credentials, a network route, or an API token for the old
@@ -80,8 +83,10 @@ incompatible files.
   statistic from imported metadata.
 - Compare unit, unit class, sum/mean shape, and mean calculation type. Do not
   convert units or normalize cumulative values in the first release.
-- Block any timestamp collision. Preserve all existing target hours and all
-  source data. Show gaps and energy-flow hints as review warnings.
+- Require an explicit choice for timestamp collisions. Preserve existing target
+  values by default only after the user selects that option; allow exported
+  values to replace them only when Recorder can safely preserve mean weights.
+  Show gaps and energy-flow hints as review warnings.
 - Recheck the target immediately before writing. Require independent backup,
   warning-review, and explicit-write confirmations, matching the existing
   merge safeguards.
@@ -98,8 +103,8 @@ incompatible files.
    control. The download uses HTTP so larger multi-year exports do not have to
    fit in a single WebSocket service response.
 3. [x] Add panel file selection, target mapping, and read-only import preview.
-4. [x] Add the confirmed import action, collision/recheck safeguards, and
-   post-import verification.
+4. [x] Add the confirmed import action, explicit collision choices, recheck
+   safeguards, and post-import verification.
 5. [x] Add German and English help, format documentation, and Home Assistant
    version compatibility checks.
 
