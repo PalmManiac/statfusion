@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.2.1 – Unreleased
+## 1.2.1 – 2026-10-07
 
 - Make the overlapping-hour choices clearly visible and usable in the analysis
   view, independently of the general text-input styling.
