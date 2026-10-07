@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
+from .merge_plan import MergePlan, build_merge_plan
 from .transfer_format import TransferPackage
 
 _VALUE_FIELDS = {"state", "sum", "min", "max", "mean", "mean_weight", "last_reset"}
@@ -15,12 +16,30 @@ def prepare_transfer_rows(package: TransferPackage) -> list[dict[str, Any]]:
     return [dict(row) for row in package.rows]
 
 
+def plan_transfer_import(
+    package: TransferPackage,
+    target_rows: list[dict[str, Any]],
+    collision_resolution: str | None,
+) -> MergePlan:
+    """Plan a transfer while preserving explicit choices for shared hours."""
+    return build_merge_plan(
+        prepare_transfer_rows(package), target_rows, collision_resolution
+    )
+
+
 def verify_transfer_rows(
     package: TransferPackage, recorder_rows: list[dict[str, Any]]
 ) -> bool:
     """Confirm every exported hour and supported value is present unchanged."""
+    return verify_transfer_data(list(package.rows), recorder_rows)
+
+
+def verify_transfer_data(
+    expected_rows: list[dict[str, Any]], recorder_rows: list[dict[str, Any]]
+) -> bool:
+    """Verify expected rows by timestamp and all exported statistic values."""
     by_start = {_as_utc(row["start"]): row for row in recorder_rows}
-    for expected in package.rows:
+    for expected in expected_rows:
         actual = by_start.get(_as_utc(expected["start"]))
         if actual is None:
             return False
@@ -37,6 +56,13 @@ def verify_transfer_rows(
             elif left != right:
                 return False
     return True
+
+
+def rows_at_starts(
+    rows: list[dict[str, Any]], starts: frozenset[datetime]
+) -> list[dict[str, Any]]:
+    """Select Recorder rows whose UTC hour starts are in a collision set."""
+    return [row for row in rows if _as_utc(row["start"]) in starts]
 
 
 def _as_utc(value: datetime | float | int) -> datetime:

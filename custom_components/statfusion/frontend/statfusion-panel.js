@@ -22,7 +22,7 @@ const FINDING_MESSAGES = {
   time_range_gap: "Zwischen Quelle und Ziel besteht eine Zeitlücke. Prüfe die Lücke vor einer späteren Übernahme.",
   time_range_contiguous: "Die Quelle endet unmittelbar vor Beginn des Ziels.",
   unit_class_mismatch: "Quelle und Ziel verwenden unterschiedliche oder unbekannte Geräteklassen.",
-  transfer_timestamp_collision: "Mindestens eine Quellstunde ist bereits im Ziel vorhanden.",
+  transfer_timestamp_collision: "Mindestens eine Quellstunde ist bereits im Ziel vorhanden. Wähle, welche Werte für gleiche Stunden erhalten bleiben sollen.",
 };
 
 const REVIEW_PLAN_STEPS = {
@@ -123,6 +123,7 @@ const EN_TRANSLATIONS = {
   "Konflikte konnten nicht geprüft werden": "Overlapping hours could not be checked",
   "Die Analyse enthält keine Konfliktdaten. Führe die Kompatibilitätsprüfung erneut aus.": "The analysis did not include conflict details. Run the compatibility check again.",
   "Konflikt-Auswahl gesperrt: Zuerst die blockierenden Kompatibilitätshinweise klären.": "Conflict choices are disabled until the blocking compatibility findings are resolved.",
+  "Quelle und Ziel verwenden unterschiedliche oder unbekannte Geräteklassen.": "Source and target use different or unknown device classes.",
   "Es gibt keine identischen Stundenwerte; alle Quellstunden werden ergänzt.": "There are no identical hourly values; all source hours will be added.",
   "Es gibt keine identischen Stundenwerte. Alle Quellstunden werden ergänzt.": "There are no identical hourly values. All source hours will be added.",
   "Stundenwerte in Ziel behalten": "Keep target values for shared hours",
@@ -245,6 +246,20 @@ const EN_TRANSLATIONS = {
   "Recorder importiert …": "Recorder is importing …",
   "Import abgeschlossen": "Import completed",
   "Die Quell-Datei und vorhandenen Zielstunden blieben unverändert. Alle importierten Stunden wurden überprüft.": "The source file and existing target hours were preserved. All imported hours were verified.",
+  "Die Exportdatei blieb unverändert. Alle importierten Stunden und beibehaltenen Zielstunden wurden überprüft.": "The export file was unchanged. All imported hours and preserved target hours were verified.",
+  "Import abgebrochen": "Import canceled",
+  "Es wurden keine Recorder-Daten geändert.": "No Recorder data was changed.",
+  "Import abbrechen": "Cancel import",
+  "Welche Werte sollen auf dem Ziel für diese Stunden erhalten bleiben?": "Which values should be kept on the target for these hours?",
+  "Stundenwerte aus Export übernehmen": "Use exported values for shared hours",
+  "Exportwerte können diese Stunden nicht sicher ersetzen, weil Home Assistant deren Mittelwertgewicht nicht aktualisieren kann.": "Exported values cannot safely replace these hours because Home Assistant cannot update their mean weights.",
+  "Mindestens eine Quellstunde ist bereits im Ziel vorhanden. Wähle, welche Werte für gleiche Stunden erhalten bleiben sollen.": "At least one source hour already exists in the target. Choose which values to keep for shared hours.",
+  "Exportwerte gewinnen für gleiche Stunden": "Exported values win for shared hours",
+  "Zielwerte bleiben für gleiche Stunden erhalten": "Keep target values for shared hours",
+  "Wähle Export, Ziel oder Abbrechen.": "Choose export, target, or cancel.",
+  "Import abgebrochen; es werden keine Daten geändert.": "Import canceled; no data will be changed.",
+  "Ersetzt: ": "Replaced: ",
+  "Zielstunden beibehalten: ": "Target hours kept: ",
   "Import fehlgeschlagen": "Import failed",
   "Backup erforderlich": "Backup required",
   "Importierte Stunden:": "Imported hours:",
@@ -298,6 +313,8 @@ class StatFusionPanel extends HTMLElement {
     this._transferError = "";
     this._transferImportLoading = false;
     this._transferImportResult = null;
+    this._transferCollisionResolution = null;
+    this._transferCancelled = false;
     this._transferDialogOpen = false;
   }
 
@@ -587,6 +604,8 @@ class StatFusionPanel extends HTMLElement {
     this._transferError = "";
     this._transferPreview = null;
     this._transferImportResult = null;
+    this._transferCollisionResolution = null;
+    this._transferCancelled = false;
     if (!this._transferFile) {
       this._transferError = "Bitte eine StatFusion-Exportdatei auswählen.";
       this._render();
@@ -632,7 +651,15 @@ class StatFusionPanel extends HTMLElement {
     const backup = this.shadowRoot.querySelector("#transfer-backup-confirmed")?.checked;
     const warnings = this.shadowRoot.querySelector("#transfer-warnings-confirmed")?.checked;
     const confirm = this.shadowRoot.querySelector("#transfer-import-confirmed")?.checked;
-    if (!backup || !warnings || !confirm || this._transferPreview?.decision !== "ready_for_review") return;
+    if (this._transferPreview?.decision !== "ready_for_review") return;
+    const collisions = Number(this._transferPreview.colliding_hours) || 0;
+    if (collisions && !["source", "target", "cancel"].includes(this._transferCollisionResolution)) return;
+    if (this._transferCollisionResolution === "cancel") {
+      this._transferCancelled = true;
+      this._render();
+      return;
+    }
+    if (!backup || !warnings || !confirm) return;
 
     const target = this._transferTarget.trim();
     const accessToken = this._accessToken();
@@ -648,6 +675,11 @@ class StatFusionPanel extends HTMLElement {
     try {
       const url = this._apiUrl("/api/statfusion/import");
       url.searchParams.set("target_statistic_id", target);
+      if (collisions) {
+        url.searchParams.set("collision_resolution", this._transferCollisionResolution);
+        url.searchParams.set("expected_collision_count", String(collisions));
+        url.searchParams.set("expected_collision_fingerprint", this._transferPreview.collision_fingerprint);
+      }
       const response = await fetch(url, {
         method: "POST",
         headers: {
@@ -659,10 +691,13 @@ class StatFusionPanel extends HTMLElement {
         },
         body: this._transferFile,
       });
-      if (!response.ok) throw new Error("Import was not confirmed");
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || "Import was not confirmed");
+      }
       this._transferImportResult = await response.json();
     } catch (error) {
-      this._transferError = "Der Import konnte nicht bestätigt werden. Prüfe Recorder-Protokolle und Zielstatistik, bevor du es erneut versuchst.";
+      this._transferError = error.message || "Der Import konnte nicht bestätigt werden. Prüfe Recorder-Protokolle und Zielstatistik, bevor du es erneut versuchst.";
     } finally {
       this._transferImportLoading = false;
       this._render();
@@ -676,7 +711,7 @@ class StatFusionPanel extends HTMLElement {
     const findings = (preview.findings || []).map((finding) => `
       <li class="finding ${finding.severity}">
         <span>${finding.severity === "error" ? "!" : finding.severity === "warning" ? "!" : "i"}</span>
-        ${escapeHtml(finding.code === "time_range_overlap" && !(this._result.overlap && this._result.overlap.count)
+        ${escapeHtml(finding.code === "time_range_overlap" && !(Number(preview.colliding_hours) > 0)
           ? this._localize("Es gibt keine identischen Stundenwerte; alle Quellstunden werden ergänzt.")
           : this._localize(FINDING_MESSAGES[finding.code] || finding.message))}
       </li>`).join("");
@@ -695,23 +730,45 @@ class StatFusionPanel extends HTMLElement {
           <div><span>Einheit</span><strong>${escapeHtml(preview.source.unit_of_measurement || "Unbekannt")}</strong></div>
           <div><span>Überschneidende Stunden</span><strong>${Number(preview.colliding_hours) || 0}</strong></div>
         </div>
+        ${this._transferCollisionTemplate()}
         ${findings ? `<ul class="findings">${findings}</ul>` : `<p>Keine Hinweise.</p>`}
         <p class="read-only">Die Vorschau verändert keine Recorder-Daten.</p>
         ${ready ? this._transferConfirmationTemplate() : ""}
       </section>`;
   }
 
+  _transferCollisionTemplate() {
+    const preview = this._transferPreview;
+    if (!preview || !(Number(preview.colliding_hours) > 0)) return "";
+    const sourceDisabled = !preview.source_overwrite_safe;
+    const blocked = preview.decision !== "ready_for_review";
+    return `
+      <section class="collision-resolution transfer-collision" aria-labelledby="transfer-collision-title">
+        <span class="eyebrow">${this._localize("Überschneidende Stunden")}</span>
+        <h2 id="transfer-collision-title">${this._localize("Gleiche Stunden: ")}${Number(preview.colliding_hours)}</h2>
+        <p>${escapeHtml(this._formatDate(preview.first_collision))} – ${escapeHtml(this._formatDate(preview.last_collision))}</p>
+        <p>${this._localize("Welche Werte sollen auf dem Ziel für diese Stunden erhalten bleiben?")}</p>
+        ${blocked ? `<p class="collision-warning">${this._localize("Konflikt-Auswahl gesperrt: Zuerst die blockierenden Kompatibilitätshinweise klären.")}</p>` : ""}
+        <label class="${blocked ? "disabled" : ""}"><input type="radio" name="transfer-collision-resolution" value="target" ${this._transferCollisionResolution === "target" ? "checked" : ""} ${blocked ? "disabled" : ""}><span>${this._localize("Stundenwerte in Ziel behalten")}</span></label>
+        <label class="${sourceDisabled || blocked ? "disabled" : ""}"><input type="radio" name="transfer-collision-resolution" value="source" ${this._transferCollisionResolution === "source" ? "checked" : ""} ${sourceDisabled || blocked ? "disabled" : ""}><span>${this._localize("Stundenwerte aus Export übernehmen")}</span></label>
+        ${sourceDisabled ? `<p class="collision-warning">${this._localize("Exportwerte können diese Stunden nicht sicher ersetzen, weil Home Assistant deren Mittelwertgewicht nicht aktualisieren kann.")}</p>` : ""}
+        <label class="${blocked ? "disabled" : ""}"><input type="radio" name="transfer-collision-resolution" value="cancel" ${this._transferCollisionResolution === "cancel" ? "checked" : ""} ${blocked ? "disabled" : ""}><span>${this._localize("Abbrechen – keine Daten ändern")}</span></label>
+        <p id="transfer-collision-policy" aria-live="polite">${this._localize(this._transferCollisionResolution === "source" ? "Exportwerte gewinnen für gleiche Stunden" : this._transferCollisionResolution === "target" ? "Zielwerte bleiben für gleiche Stunden erhalten" : "Wähle Export, Ziel oder Abbrechen.")}</p>
+      </section>`;
+  }
+
   _transferConfirmationTemplate() {
     if (this._transferImportResult) {
-      return `<section class="transfer-import-result" role="status"><strong>Import abgeschlossen</strong><p>Die Quell-Datei und vorhandenen Zielstunden blieben unverändert. Alle importierten Stunden wurden überprüft.</p><p>Importierte Stunden: ${Number(this._transferImportResult.imported_hours) || 0}</p></section>`;
+      return `<section class="transfer-import-result" role="status"><strong>${this._localize("Import abgeschlossen")}</strong><p>${this._localize("Die Exportdatei blieb unverändert. Alle importierten Stunden und beibehaltenen Zielstunden wurden überprüft.")}</p><p>${this._localize("Importierte Stunden: ")}${Number(this._transferImportResult.imported_hours) || 0}; ${this._localize("Ersetzt: ")}${Number(this._transferImportResult.replaced_hours) || 0}; ${this._localize("Zielstunden beibehalten: ")}${Number(this._transferImportResult.preserved_target_hours) || 0}</p></section>`;
     }
+    if (this._transferCancelled) return `<section class="transfer-import-result" role="status"><strong>${this._localize("Import abgebrochen")}</strong><p>${this._localize("Es wurden keine Recorder-Daten geändert.")}</p></section>`;
     const disabled = this._transferImportLoading ? "disabled" : "";
     return `
       <aside class="transfer-backup-notice" role="alert"><strong>Backup erforderlich</strong><p>Erstelle vor dem Import ein vollständiges Home-Assistant-Backup und prüfe, dass es verfügbar ist. Der Import erfolgt auf eigene Gefahr.</p></aside>
       <label class="confirm-check"><input id="transfer-backup-confirmed" type="checkbox"><span>Ich habe vor dem Import ein vollständiges Home-Assistant-Backup erstellt und geprüft, dass es verfügbar ist.</span></label>
       <label class="confirm-check"><input id="transfer-warnings-confirmed" type="checkbox"><span>Ich habe alle Hinweise geprüft und bestätige die Zuordnung von Datei und Zielstatistik.</span></label>
       <label class="confirm-check"><input id="transfer-import-confirmed" type="checkbox"><span>Ich bestätige den Import der angezeigten Stunden in die Zielstatistik.</span></label>
-      <button class="transfer-button" id="import-transfer" type="button" ${disabled}>${this._transferImportLoading ? "Recorder importiert …" : "Stundenwerte jetzt importieren"}</button>`;
+      <button class="transfer-button" id="import-transfer" type="button" ${disabled}>${this._transferImportLoading ? this._localize("Recorder importiert …") : this._transferCollisionResolution === "cancel" ? this._localize("Import abbrechen") : this._localize("Stundenwerte jetzt importieren")}</button>`;
   }
 
   _transferDialogTemplate() {
@@ -1150,6 +1207,8 @@ class StatFusionPanel extends HTMLElement {
       this._transferFile = event.target.files?.[0] || null;
       this._transferPreview = null;
       this._transferImportResult = null;
+      this._transferCollisionResolution = null;
+      this._transferCancelled = false;
       this._transferError = "";
       this._render();
     });
@@ -1161,11 +1220,40 @@ class StatFusionPanel extends HTMLElement {
     ];
     if (transferImportButton && transferConfirmations.every(Boolean)) {
       const syncTransferImportButton = () => {
+        const collisionCount = Number(this._transferPreview?.colliding_hours) || 0;
+        const resolution = this._transferCollisionResolution;
+        const resolutionRequired = collisionCount > 0;
+        const resolutionValid = !resolutionRequired
+          || ["source", "target", "cancel"].includes(resolution);
+        const sourceSafe = resolution !== "source" || this._transferPreview.source_overwrite_safe;
+        const cancelSelected = resolution === "cancel";
         transferImportButton.disabled = this._transferImportLoading
-          || !transferConfirmations.every((checkbox) => checkbox.checked);
+          || !resolutionValid
+          || !sourceSafe
+          || (!cancelSelected && !transferConfirmations.every((checkbox) => checkbox.checked));
+        transferImportButton.textContent = this._transferImportLoading
+          ? this._localize("Recorder importiert …")
+          : cancelSelected
+            ? this._localize("Import abbrechen")
+            : this._localize("Stundenwerte jetzt importieren");
       };
       transferConfirmations.forEach((checkbox) => checkbox.addEventListener("change", syncTransferImportButton));
       transferImportButton.addEventListener("click", () => this._importTransfer());
+      this.shadowRoot.querySelectorAll('input[name="transfer-collision-resolution"]').forEach((input) => {
+        input.addEventListener("change", (event) => {
+          this._transferCollisionResolution = event.target.value;
+          this._transferCancelled = false;
+          const policy = this.shadowRoot.querySelector("#transfer-collision-policy");
+          if (policy) {
+            policy.textContent = this._localize(event.target.value === "source"
+              ? "Exportwerte gewinnen für gleiche Stunden"
+              : event.target.value === "target"
+                ? "Zielwerte bleiben für gleiche Stunden erhalten"
+                : "Import abgebrochen; es werden keine Daten geändert.");
+          }
+          syncTransferImportButton();
+        });
+      });
       syncTransferImportButton();
     }
     const copyResult = this.shadowRoot.querySelector("#copy-result");
@@ -1284,6 +1372,8 @@ class StatFusionPanel extends HTMLElement {
       this._transferTarget = statisticId;
       this._transferPreview = null;
       this._transferImportResult = null;
+      this._transferCollisionResolution = null;
+      this._transferCancelled = false;
     }
     this._closePicker();
   }

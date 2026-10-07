@@ -87,18 +87,22 @@ Quelle herunter und überträgst sie selbst zum Ziel.
 3. Prüfe Quelle und Ziel, Einheiten, Datenform, Zeitraum, Lücken und alle
    Hinweise. Gleiche Statistik-IDs sind zulässig, wenn sie zu zwei verschiedenen
    Installationen gehören.
-4. Erstelle ein vollständiges Home-Assistant-Backup und prüfe, ob es die
+4. Wenn die Vorschau gleiche Stunden meldet, wähle, ob die exportierten Werte
+   oder die bestehenden Zielwerte erhalten bleiben sollen. Das Ersetzen durch
+   Exportwerte kann gesperrt sein, wenn Home Assistant Mittelwertgewichte nicht
+   sicher aktualisieren kann.
+5. Erstelle ein vollständiges Home-Assistant-Backup und prüfe, ob es die
    Recorder-Datenbank enthält. Sichere eine externe Datenbank separat. Bestätige
    das Backup, prüfe Hinweise und Zuordnung und bestätige ausdrücklich den Import.
-5. Warte auf die Erfolgsmeldung nach der Verifikation und prüfe die Zielhistorie.
+6. Warte auf die Erfolgsmeldung nach der Verifikation und prüfe die Zielhistorie.
 
-StatFusion blockiert inkompatible Statistiken und Stunden, die im Ziel bereits
-vorhanden sind. Bestehende Zielstunden werden nicht überschrieben. StatFusion
-rechnet Einheiten nicht um und verändert die exportierten Werte nicht. Bewahre
-die Exportdatei auf, bis du die Zielhistorie kontrolliert hast. Die Datei kann
-sensible Energie- oder Verbrauchshistorie enthalten; speichere und übertrage sie
-entsprechend vorsichtig. Unterstützt werden höchstens 250.000 Stundenwerte und
-Dateien bis 64 MiB.
+StatFusion blockiert inkompatible Statistiken und verlangt für gleiche Stunden
+eine ausdrückliche Auswahl. StatFusion rechnet Einheiten nicht um und verändert
+die exportierten Werte nicht. Bewahre die Exportdatei auf, bis du die
+Zielhistorie kontrolliert hast. Die Datei kann sensible Energie- oder
+Verbrauchshistorie enthalten; speichere und übertrage sie entsprechend
+vorsichtig. Unterstützt werden höchstens 250.000 Stundenwerte und Dateien bis
+64 MiB.
 
 ## Aktionen in den Entwicklerwerkzeugen
 

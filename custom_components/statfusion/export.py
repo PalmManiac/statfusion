@@ -9,6 +9,7 @@ from homeassistant.components.http import KEY_HASS, HomeAssistantView, require_a
 from homeassistant.core import HomeAssistant, callback, valid_entity_id
 
 from .const import DOMAIN
+from .merge_plan import MergePlanError, inspect_collisions
 from .recorder_reader import (
     async_import_hourly_statistics,
     async_read_statistic_dataset,
@@ -19,7 +20,11 @@ from .transfer_format import (
     build_transfer_package,
     parse_transfer_package,
 )
-from .transfer_import import prepare_transfer_rows, verify_transfer_rows
+from .transfer_import import (
+    plan_transfer_import,
+    rows_at_starts,
+    verify_transfer_data,
+)
 from .transfer_preview import analyze_transfer_preview
 
 _VIEW_DATA_KEY = f"{DOMAIN}_statistics_export_view"
@@ -134,6 +139,17 @@ class StatisticsImportPreviewView(HomeAssistantView):
         response["target_statistic_id"] = target_id
         response["exported_at"] = package.exported_at.isoformat()
         response["colliding_hours"] = collisions
+        collision_summary = await hass.async_add_executor_job(
+            inspect_collisions, list(package.rows), target_rows
+        )
+        response["collision_fingerprint"] = collision_summary.fingerprint
+        response["source_overwrite_safe"] = collision_summary.source_overwrite_safe
+        response["first_collision"] = (
+            collision_summary.first.isoformat() if collision_summary.first else None
+        )
+        response["last_collision"] = (
+            collision_summary.last.isoformat() if collision_summary.last else None
+        )
         return self.json(response)
 
 
@@ -195,18 +211,51 @@ class StatisticsImportView(HomeAssistantView):
                 "The target must be an existing Recorder entity statistic.",
                 status_code=400,
             )
-        analysis, collisions = await hass.async_add_executor_job(
+        analysis, _collisions = await hass.async_add_executor_job(
             analyze_transfer_preview, package, target, target_rows
         )
-        if analysis.decision.value == "blocked" or collisions:
+        collision_summary = await hass.async_add_executor_job(
+            inspect_collisions, list(package.rows), target_rows
+        )
+        collisions = collision_summary.count
+        expected_count = request.query.get("expected_collision_count")
+        expected_fingerprint = request.query.get("expected_collision_fingerprint")
+        if collisions and (expected_count is None or expected_fingerprint is None):
             return self.json_message(
-                "The import is blocked because the target is no longer compatible "
-                "or one or more source hours already exist.",
+                "Run the preview and choose how to resolve the overlapping hours.",
+                status_code=409,
+            )
+        if expected_count is not None:
+            try:
+                count_matches = int(expected_count) == collisions
+            except ValueError:
+                count_matches = False
+            if (
+                not count_matches
+                or expected_fingerprint != collision_summary.fingerprint
+            ):
+                return self.json_message(
+                    "The overlapping hours changed after preview. Run the preview "
+                    "again before importing.",
+                    status_code=409,
+                )
+        if analysis.decision.value == "blocked":
+            return self.json_message(
+                "The import is blocked because the target is no longer compatible.",
                 status_code=409,
             )
 
-        rows = await hass.async_add_executor_job(prepare_transfer_rows, package)
-        await async_import_hourly_statistics(hass, metadata, rows)
+        collision_resolution = request.query.get("collision_resolution")
+        try:
+            plan = await hass.async_add_executor_job(
+                plan_transfer_import, package, target_rows, collision_resolution
+            )
+        except MergePlanError as err:
+            return self.json_message(str(err), status_code=409)
+
+        rows = list(plan.rows_to_import)
+        if rows:
+            await async_import_hourly_statistics(hass, metadata, rows)
 
         (
             _verified,
@@ -214,9 +263,19 @@ class StatisticsImportView(HomeAssistantView):
             verified_rows,
         ) = await async_read_statistic_dataset(hass, target_id)
         verified = await hass.async_add_executor_job(
-            verify_transfer_rows, package, verified_rows
+            verify_transfer_data, rows, verified_rows
         )
-        if not verified:
+        preserved_target_rows = rows_at_starts(
+            target_rows, plan.collision_summary.starts
+        )
+        preserved = collision_resolution != "target"
+        if not preserved:
+            preserved = await hass.async_add_executor_job(
+                verify_transfer_data,
+                preserved_target_rows,
+                verified_rows,
+            )
+        if not verified or not preserved:
             return self.json_message(
                 "The Recorder finished the import, but post-import verification "
                 "failed. Restore from the backup if the target is incomplete.",
@@ -227,9 +286,13 @@ class StatisticsImportView(HomeAssistantView):
             "status": "completed",
             "source_statistic_id": package.source["statistic_id"],
             "target_statistic_id": target_id,
-            "imported_hours": len(package.rows),
+            "imported_hours": len(rows),
+            "added_hours": plan.added_hours,
+            "replaced_hours": plan.replaced_hours,
+            "preserved_target_hours": plan.preserved_target_hours,
+            "collision_resolution": collision_resolution,
             "source_preserved": True,
-            "existing_target_hours_preserved": True,
+            "existing_target_hours_preserved": plan.replaced_hours == 0,
             "verified": True,
         }
         return self.json(result)

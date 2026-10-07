@@ -77,17 +77,19 @@ installation.
 3. Review the source and target, units, data type, time range, gaps, and findings.
    A source and target with the same ID can still be separate statistics on
    different installations.
-4. Create a full Home Assistant backup and verify that it includes the Recorder
+4. If the preview reports matching hours, choose whether the exported values or
+   existing target values should be kept for those hours. Source replacement may
+   be unavailable when Home Assistant cannot safely update mean weights.
+5. Create a full Home Assistant backup and verify that it includes the Recorder
    database; back up an external Recorder database separately. Confirm the backup,
    review the warnings and mapping, then explicitly confirm the import.
-5. Wait for the verified completion result.
+6. Wait for the verified completion result.
 
-StatFusion blocks incompatible statistics and any hour that already exists in
-the target. It does not overwrite existing target hours, convert units, or
-change the exported values. Keep the export file until you have checked the
-target history. The JSON can contain sensitive household usage history; store
-and transfer it accordingly. Imports are limited to 250,000 hourly rows and a
-64 MiB file.
+StatFusion blocks incompatible statistics and requires an explicit choice for
+matching hours. It never converts units or changes exported values. Keep the
+export file until you have checked the target history. The JSON can contain
+sensitive household usage history; store and transfer it accordingly. Imports
+are limited to 250,000 hourly rows and a 64 MiB file.
 
 ## Developer Tools actions
 
