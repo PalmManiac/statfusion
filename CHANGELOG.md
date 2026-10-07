@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.2.3 – 2026-10-07
+
+- Resolve overlapping hours during cross-installation imports by keeping the
+  existing target value, using the exported value when Recorder can safely
+  preserve mean weights, or cancelling the import.
+- Recheck the selected collision set before writing and verify imported values
+  and preserved target rows afterward.
+- Add German and English conflict-resolution guidance in the dashboard and
+  transfer guides.
+
 ## 1.2.2 – 2026-10-07
 
 - Explain when overlapping date ranges contain no identical hourly timestamps,
