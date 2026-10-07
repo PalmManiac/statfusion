@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.1 – Unreleased
+
+- Make the overlapping-hour choices clearly visible and usable in the analysis
+  view, independently of the general text-input styling.
+
 ## 1.2.0 – 2026-10-07
 
 - Resolve identical hourly timestamps during same-installation merges by
