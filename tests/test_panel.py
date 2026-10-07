@@ -77,6 +77,19 @@ def test_sidebar_panel_is_packaged_with_analysis_and_merge_ui() -> None:
     assert 'name="collision-resolution" value="target"' in panel
     assert 'name="collision-resolution" value="source"' in panel
     assert 'name="collision-resolution" value="cancel"' in panel
+    assert 'finding.code === "time_range_overlap"' in panel
+    assert (
+        "Der Recorder hat keine identischen Stundenstarts gefunden. "
+        "Deshalb gibt es keine Konflikt-Auswahl."
+    ) in panel
+    assert (
+        "Die Analyse enthält keine Konfliktdaten. "
+        "Führe die Kompatibilitätsprüfung erneut aus."
+    ) in panel
+    assert (
+        "Konflikt-Auswahl gesperrt: Zuerst die blockierenden "
+        "Kompatibilitätshinweise klären."
+    ) in panel
     assert 'input[type="radio"] { accent-color:#0878d1;' in panel
     assert ".collision-resolution input[type=\"radio\"]" in panel
     assert "expected_collision_count: overlap.count" in panel
@@ -126,7 +139,7 @@ def test_sidebar_panel_module_url_has_a_version_token() -> None:
     """Force browser clients to request each shipped panel revision."""
     constants = CONSTANTS_PATH.read_text(encoding="utf-8")
 
-    assert 'PANEL_JS_VERSION = "13"' in constants
+    assert 'PANEL_JS_VERSION = "14"' in constants
     assert "statfusion-panel.js?v={PANEL_JS_VERSION}" in constants
 
 
