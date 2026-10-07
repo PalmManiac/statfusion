@@ -19,9 +19,9 @@ merge:
   name: Merge hourly statistics
   description: >-
     Copy compatible source long-term statistics into the target. Existing source
-    and target rows are preserved. A full Home Assistant backup, review of
-    warnings, and explicit confirmation are required. Overlapping timestamps and
-    unit conversions are blocked.
+    and target rows are preserved unless the explicit overlap choice replaces
+    those exact target hours. A full Home Assistant backup, review of warnings,
+    and explicit confirmation are required. Unit conversions are blocked.
   fields:
     source_statistic_id:
       name: Source statistic ID
@@ -35,6 +35,17 @@ merge:
       required: true
       selector:
         text:
+    collision_resolution:
+      name: Overlapping hours
+      description: Required for shared hours. Choose old source values or new target values to keep for those hours.
+      required: false
+      selector:
+        select:
+          options:
+            - label: Keep source values
+              value: source
+            - label: Keep target values
+              value: target
     backup_confirmed:
       name: Full backup created
       description: Confirm that a full Home Assistant backup exists.

@@ -49,13 +49,27 @@ def test_contiguous_total_statistics_are_ready_for_review() -> None:
     assert analysis.as_dict()["analysis_only"] is True
 
 
-def test_overlapping_ranges_are_blocked() -> None:
+def test_overlapping_ranges_are_ready_for_explicit_review() -> None:
     source = _snapshot("sensor.old_energy")
     target = _snapshot("sensor.new_energy", first=source.last)
 
     analysis = analyze_merge(source, target)
 
-    assert analysis.decision is AnalysisDecision.BLOCKED
+    assert analysis.decision is AnalysisDecision.READY_FOR_REVIEW
+    assert "time_range_overlap" in _finding_codes(analysis)
+    overlap = next(
+        finding for finding in analysis.findings if finding.code == "time_range_overlap"
+    )
+    assert overlap.severity.value == "warning"
+
+
+def test_statistics_with_same_first_hour_can_be_reviewed_as_replacement() -> None:
+    source = _snapshot("sensor.old_energy")
+    target = _snapshot("sensor.new_energy")
+
+    analysis = analyze_merge(source, target)
+
+    assert analysis.decision is AnalysisDecision.READY_FOR_REVIEW
     assert "time_range_overlap" in _finding_codes(analysis)
 
 

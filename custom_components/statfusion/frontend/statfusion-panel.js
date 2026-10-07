@@ -18,7 +18,7 @@ const FINDING_MESSAGES = {
   unit_mismatch: "Quelle und Ziel verwenden nicht passende oder unbekannte Einheiten.",
   energy_flow_mismatch: "Quelle und Ziel scheinen entgegengesetzte Energieflüsse zu beschreiben. Prüfe ihre Bedeutung vor einer späteren Übernahme.",
   time_range_target_starts_before_source: "Das Ziel beginnt zeitlich vor der Quelle. Wähle die ältere Statistik als Quelle und die neuere als Ziel.",
-  time_range_overlap: "Quelle und Ziel enthalten überlappende Zeiträume in der Langzeitstatistik.",
+  time_range_overlap: "Quelle und Ziel enthalten überlappende Zeiträume. Prüfe die Anzahl gleicher Stunden und wähle, welche Werte dort erhalten bleiben sollen.",
   time_range_gap: "Zwischen Quelle und Ziel besteht eine Zeitlücke. Prüfe die Lücke vor einer späteren Übernahme.",
   time_range_contiguous: "Die Quelle endet unmittelbar vor Beginn des Ziels.",
   unit_class_mismatch: "Quelle und Ziel verwenden unterschiedliche oder unbekannte Geräteklassen.",
@@ -30,6 +30,7 @@ const REVIEW_PLAN_STEPS = {
   time_range_gap: "Die angezeigte Zeitlücke fachlich prüfen und dokumentieren.",
   unit_conversion_required: "Die erforderliche Einheitenumrechnung fachlich und technisch prüfen.",
   sum_baseline_discontinuity: "Mögliche sichtbare Sprünge durch unterschiedliche Ausgangswerte berücksichtigen.",
+  time_range_overlap: "Die überlappenden Stunden und die gewählte Konfliktregel vor der Übernahme prüfen.",
 };
 
 const EN_TRANSLATIONS = {
@@ -46,12 +47,13 @@ const EN_TRANSLATIONS = {
   "Kumulative Werte werden unverändert kopiert. Unterschiedliche Ausgangswerte können als sichtbarer Sprung erscheinen; Werte werden weder angepasst noch addiert.": "Cumulative values are copied unchanged. Different starting values may create a visible jump; values are neither adjusted nor added together.",
   "Quelle und Ziel scheinen entgegengesetzte Energieflüsse zu beschreiben. Prüfe ihre Bedeutung vor einer späteren Übernahme.": "Source and target appear to describe opposite energy flows. Review their meaning before merging.",
   "Das Ziel beginnt zeitlich vor der Quelle. Wähle die ältere Statistik als Quelle und die neuere als Ziel.": "The target starts before the source. Choose the older statistic as the source and the newer one as the target.",
-  "Quelle und Ziel enthalten überlappende Zeiträume in der Langzeitstatistik.": "The source and target long-term statistics have overlapping time ranges.",
+  "Quelle und Ziel enthalten überlappende Zeiträume. Prüfe die Anzahl gleicher Stunden und wähle, welche Werte dort erhalten bleiben sollen.": "The source and target ranges overlap. Review the number of shared hours and choose which values to keep for those hours.",
   "Zwischen Quelle und Ziel besteht eine Zeitlücke. Prüfe die Lücke vor einer späteren Übernahme.": "There is a time gap between the source and target. Review the gap before merging.",
   "Den Energiefluss von Quelle und Ziel fachlich bestätigen.": "Confirm that the source and target describe the intended energy flow.",
   "Die angezeigte Zeitlücke fachlich prüfen und dokumentieren.": "Review and document the displayed time gap.",
   "Die erforderliche Einheitenumrechnung fachlich und technisch prüfen.": "Review the required unit conversion.",
   "Mögliche sichtbare Sprünge durch unterschiedliche Ausgangswerte berücksichtigen.": "Account for possible visible jumps caused by different starting values.",
+  "Die überlappenden Stunden und die gewählte Konfliktregel vor der Übernahme prüfen.": "Review the overlapping hours and chosen conflict rule before merging.",
   "Die verfügbaren Statistiken konnten nicht geladen werden.": "Available statistics could not be loaded.",
   "Bitte wähle eine Quell- und eine Zielstatistik aus.": "Choose a source and a target statistic.",
   "Die Analyse konnte nicht ausgeführt werden. Bitte prüfe die Auswahl.": "The analysis could not be run. Check your selection.",
@@ -113,6 +115,24 @@ const EN_TRANSLATIONS = {
   "Hinweise prüfen": "Review findings",
   "Vorbereitung": "Preparation",
   "Die Übernahme kopiert die Quellstunden unverändert ins Ziel. Quellwerte und bestehende Zielstunden bleiben erhalten.": "The merge copies source hours unchanged into the target. Source data and existing target hours are preserved.",
+  "Die Übernahme kopiert alle fehlenden Quellstunden unverändert ins Ziel.": "The merge copies all missing source hours unchanged into the target.",
+  "Bei gleichen Stunden gewinnt die ausgewählte Statistik. Alle anderen Zielstunden bleiben erhalten.": "For shared hours, the selected statistic wins. All other target hours are preserved.",
+  "Überschneidende Stunden": "Overlapping hours",
+  "Es gibt keine identischen Stundenwerte; alle Quellstunden werden ergänzt.": "There are no identical hourly values; all source hours will be added.",
+  "Es gibt keine identischen Stundenwerte. Alle Quellstunden werden ergänzt.": "There are no identical hourly values. All source hours will be added.",
+  "Stundenwerte in Ziel behalten": "Keep target values for shared hours",
+  "Stundenwerte aus Quelle übernehmen": "Use source values for shared hours",
+  "Abbrechen – keine Daten ändern": "Cancel – do not change data",
+  "Quelle kann diese Stunden nicht sicher ersetzen, weil Home Assistant deren Mittelwertgewicht nicht aktualisieren kann.": "The source cannot safely replace these hours because Home Assistant cannot update their mean weights.",
+  "Wähle Quelle oder Ziel für die überschneidenden Stunden. Abbrechen führt keine Übernahme aus.": "Choose source or target for overlapping hours. Cancel performs no merge.",
+  "Quelle gewinnt für überschneidende Stunden": "Source wins for overlapping hours",
+  "Ziel gewinnt für überschneidende Stunden": "Target wins for overlapping hours",
+  "Übernahme abbrechen": "Cancel merge",
+  "Die Quelle blieb unverändert. Hinzugefügt: ": "The source was unchanged. Added: ",
+  "Ersetzt: ": "Replaced: ",
+  "Zielstunden beibehalten: ": "Target hours kept: ",
+  "Übernahme abgebrochen; es wurden keine Daten geändert.": "Merge canceled; no data was changed.",
+  "Gleiche Stunden: ": "Shared hours: ",
   "Übernahme abgeschlossen": "Merge completed",
   "Letzter Schritt": "Final step",
   "Stundenwerte übernehmen": "Merge hourly values",
@@ -261,6 +281,7 @@ class StatFusionPanel extends HTMLElement {
     this._pickerQuery = "";
     this._analysisHistory = [];
     this._mergeLoading = false;
+    this._collisionResolution = null;
     this._mergeResult = null;
     this._mergeError = "";
     this._exportLoading = false;
@@ -391,6 +412,7 @@ class StatFusionPanel extends HTMLElement {
     this._copyStatus = "";
     this._mergeResult = null;
     this._mergeError = "";
+    this._collisionResolution = null;
 
     if (!source || !target) {
       this._error = "Bitte wähle eine Quell- und eine Zielstatistik aus.";
@@ -454,8 +476,23 @@ class StatFusionPanel extends HTMLElement {
     const backupConfirmed = this.shadowRoot.querySelector("#backup-confirmed").checked;
     const warningsConfirmed = this.shadowRoot.querySelector("#warnings-confirmed").checked;
     const mergeConfirmed = this.shadowRoot.querySelector("#merge-confirmed").checked;
-    if (!backupConfirmed || !warningsConfirmed || !mergeConfirmed || !this._result || this._result.decision === "blocked") return;
-    if (!window.confirm(this._localize("Möchtest du die ausgewählten Stundenwerte jetzt übernehmen?"))) return;
+    const overlap = this._result && this._result.overlap;
+    if (!this._result || this._result.decision === "blocked") return;
+    if (this._collisionResolution === "cancel") {
+      this._mergeError = "Übernahme abgebrochen; es wurden keine Daten geändert.";
+      this._collisionResolution = null;
+      this._render();
+      return;
+    }
+    if (!backupConfirmed || !warningsConfirmed || !mergeConfirmed) return;
+    if (overlap && overlap.count > 0 && !["source", "target"].includes(this._collisionResolution)) return;
+    const policy = this._collisionResolution === "source"
+      ? "Quelle gewinnt für überschneidende Stunden"
+      : "Ziel gewinnt für überschneidende Stunden";
+    const confirmation = overlap && overlap.count > 0
+      ? `${this._localize("Möchtest du die ausgewählten Stundenwerte jetzt übernehmen?")}\n\n${this._localize("Gleiche Stunden: ")}${overlap.count}\n${this._localize(policy)}`
+      : this._localize("Möchtest du die ausgewählten Stundenwerte jetzt übernehmen?");
+    if (!window.confirm(confirmation)) return;
 
     this._mergeLoading = true;
     this._mergeResult = null;
@@ -472,6 +509,11 @@ class StatFusionPanel extends HTMLElement {
           confirm: true,
           backup_confirmed: true,
           warnings_confirmed: true,
+          ...(overlap ? {
+            expected_collision_count: overlap.count,
+            expected_collision_fingerprint: overlap.fingerprint,
+          } : {}),
+          ...(overlap && overlap.count > 0 ? { collision_resolution: this._collisionResolution } : {}),
         },
         return_response: true,
       });
@@ -629,7 +671,9 @@ class StatFusionPanel extends HTMLElement {
     const findings = (preview.findings || []).map((finding) => `
       <li class="finding ${finding.severity}">
         <span>${finding.severity === "error" ? "!" : finding.severity === "warning" ? "!" : "i"}</span>
-        ${escapeHtml(FINDING_MESSAGES[finding.code] || finding.message)}
+        ${escapeHtml(finding.code === "time_range_overlap" && !(this._result.overlap && this._result.overlap.count)
+          ? this._localize("Es gibt keine identischen Stundenwerte; alle Quellstunden werden ergänzt.")
+          : this._localize(FINDING_MESSAGES[finding.code] || finding.message))}
       </li>`).join("");
     return `
       <section class="transfer-preview ${ready ? "ready" : "blocked"}" aria-live="polite">
@@ -783,7 +827,7 @@ class StatFusionPanel extends HTMLElement {
     if (Number.isNaN(sourceStart.valueOf()) || Number.isNaN(sourceEnd.valueOf()) || Number.isNaN(targetStart.valueOf())) return "";
 
     const difference = targetStart.valueOf() - sourceEnd.valueOf();
-    const relation = targetStart <= sourceStart ? "reversed" : difference < 0 ? "overlap" : difference > 60 * 60 * 1000 ? "gap" : "contiguous";
+    const relation = targetStart < sourceStart ? "reversed" : difference < 0 ? "overlap" : difference > 60 * 60 * 1000 ? "gap" : "contiguous";
     const relationLabel = relation === "reversed" ? "Falsche Reihenfolge" : relation === "overlap" ? "Überlappung" : relation === "gap" ? "Zeitlücke" : "Direkter Übergang";
     const relationDescription = relation === "reversed"
       ? "Das Ziel beginnt vor der Quelle. Wähle die ältere Statistik als Quelle."
@@ -825,7 +869,9 @@ class StatFusionPanel extends HTMLElement {
       : timeFinding && timeFinding.code === "time_range_target_starts_before_source"
       ? { tone: "error", title: "Zeitraum", value: "Falsche Reihenfolge", detail: "Das Ziel muss nach der Quelle beginnen." }
       : timeFinding && timeFinding.code === "time_range_overlap"
-      ? { tone: "error", title: "Zeitraum", value: "Überlappung", detail: "Die Zeiträume können nicht direkt aneinander anschließen." }
+      ? { tone: "warning", title: "Zeitraum", value: "Überlappung", detail: (this._result.overlap && this._result.overlap.count)
+        ? `${this._localize("Überschneidende Stunden")}: ${Number(this._result.overlap.count)}`
+        : this._localize("Es gibt keine identischen Stundenwerte; alle Quellstunden werden ergänzt.") }
       : timeFinding && timeFinding.code === "time_range_gap"
         ? { tone: "warning", title: "Zeitraum", value: "Lücke", detail: "Die Lücke muss vor einer späteren Übernahme geprüft werden." }
         : { tone: "good", title: "Zeitraum", value: "Direkter Übergang", detail: "Quelle und Ziel schließen zeitlich direkt aneinander an." };
@@ -871,6 +917,7 @@ class StatFusionPanel extends HTMLElement {
               ${this._statisticCard("Ziel", this._result.target, "target")}
             </div>
             ${this._reviewPlanTemplate(blocked)}
+            ${this._collisionTemplate(blocked)}
             ${this._mergeTemplate(blocked)}
           </div>
         </div>
@@ -889,6 +936,7 @@ class StatFusionPanel extends HTMLElement {
 
     const warningSteps = (this._result.findings || [])
       .filter((finding) => finding.severity === "warning")
+      .filter((finding) => finding.code !== "time_range_overlap" || (this._result.overlap && this._result.overlap.count))
       .map((finding) => REVIEW_PLAN_STEPS[finding.code] || "Den angezeigten Hinweis vor einer späteren Übernahme prüfen.");
     const steps = [
       ...new Set(warningSteps),
@@ -897,22 +945,40 @@ class StatFusionPanel extends HTMLElement {
     return `
       <details class="review-plan" ${warningSteps.length ? "open" : ""}>
         <summary><span><span class="eyebrow">Vorschau</span>Übernahmeplan zur Prüfung</span><span>${warningSteps.length ? "Hinweise prüfen" : "Vorbereitung"}</span></summary>
-        <p>Die Übernahme kopiert die Quellstunden unverändert ins Ziel. Quellwerte und bestehende Zielstunden bleiben erhalten.</p>
+        <p>${this._result.overlap && this._result.overlap.count ? "Die Übernahme kopiert alle fehlenden Quellstunden unverändert ins Ziel. Bei gleichen Stunden gewinnt die ausgewählte Statistik. Alle anderen Zielstunden bleiben erhalten." : "Die Übernahme kopiert die Quellstunden unverändert ins Ziel. Quellwerte und bestehende Zielstunden bleiben erhalten."}</p>
         <ol>${steps.map((step) => `<li>${escapeHtml(step)}</li>`).join("")}</ol>
       </details>`;
+  }
+
+  _collisionTemplate(blocked) {
+    const overlap = this._result && this._result.overlap;
+    if (blocked || !overlap || !overlap.count || this._mergeResult) return "";
+    const sourceDisabled = !overlap.source_overwrite_safe;
+    return `
+      <section class="collision-resolution">
+        <span class="eyebrow">${this._localize("Überschneidende Stunden")}</span>
+        <h2>${this._localize("Gleiche Stunden: ")}${overlap.count}</h2>
+        <p>${escapeHtml(this._formatDate(overlap.first))} – ${escapeHtml(this._formatDate(overlap.last))}</p>
+        <p>${this._localize("Wähle Quelle oder Ziel für die überschneidenden Stunden. Abbrechen führt keine Übernahme aus.")}</p>
+        <label><input type="radio" name="collision-resolution" value="target" ${this._collisionResolution === "target" ? "checked" : ""}><span>${this._localize("Stundenwerte in Ziel behalten")}</span></label>
+        <label class="${sourceDisabled ? "disabled" : ""}"><input type="radio" name="collision-resolution" value="source" ${this._collisionResolution === "source" ? "checked" : ""} ${sourceDisabled ? "disabled" : ""}><span>${this._localize("Stundenwerte aus Quelle übernehmen")}</span></label>
+        ${sourceDisabled ? `<p class="collision-warning">${this._localize("Quelle kann diese Stunden nicht sicher ersetzen, weil Home Assistant deren Mittelwertgewicht nicht aktualisieren kann.")}</p>` : ""}
+        <label><input type="radio" name="collision-resolution" value="cancel" ${this._collisionResolution === "cancel" ? "checked" : ""}><span>${this._localize("Abbrechen – keine Daten ändern")}</span></label>
+        <p id="collision-policy" aria-live="polite">${this._localize(this._collisionResolution === "source" ? "Quelle gewinnt für überschneidende Stunden" : this._collisionResolution === "target" ? "Ziel gewinnt für überschneidende Stunden" : "Wähle Quelle oder Ziel für die überschneidenden Stunden. Abbrechen führt keine Übernahme aus.")}</p>
+      </section>`;
   }
 
   _mergeTemplate(blocked) {
     if (blocked || !this._result || this._mergeResult) {
       if (this._mergeResult) {
-        return `<section class="merge-result success"><strong>Übernahme abgeschlossen</strong><p>Die Quellstatistik und vorhandenen Zielstunden bleiben erhalten.</p><p>Übernommene Stunden: ${Number(this._mergeResult.imported_hours) || 0}</p></section>`;
+        return `<section class="merge-result success"><strong>Übernahme abgeschlossen</strong><p>${this._localize("Die Quelle blieb unverändert. Hinzugefügt: ")}${Number(this._mergeResult.added_hours) || 0}; ${this._localize("Ersetzt: ")}${Number(this._mergeResult.replaced_hours) || 0}; ${this._localize("Zielstunden beibehalten: ")}${Number(this._mergeResult.preserved_target_hours) || 0}</p></section>`;
       }
       return "";
     }
     return `
       <section class="merge-confirmation">
         <span class="eyebrow">Letzter Schritt</span><h2>Stundenwerte übernehmen</h2>
-        <p>StatFusion ergänzt ausschließlich fehlende Stunden im Ziel. Die Quelle und bereits vorhandene Zielstunden bleiben unverändert. Werte werden nicht addiert oder umgerechnet.</p>
+        <p>${this._result.overlap && this._result.overlap.count ? "Die ausgewählte Regel gilt nur für identische Stunden. Fehlende Quellstunden werden ergänzt; alle anderen Zielstunden und die Quelle bleiben erhalten. Werte werden nicht addiert oder umgerechnet." : "StatFusion ergänzt ausschließlich fehlende Stunden im Ziel. Die Quelle und bereits vorhandene Zielstunden bleiben unverändert. Werte werden nicht addiert oder umgerechnet."}</p>
         <label class="confirm-check"><input id="backup-confirmed" type="checkbox"><span>Ich habe vor der Übernahme eine vollständige Home-Assistant-Sicherung erstellt.</span></label>
         <label class="confirm-check"><input id="warnings-confirmed" type="checkbox"><span>Ich habe alle Warnhinweise geprüft, insbesondere mögliche Sprünge bei kumulativen Werten.</span></label>
         <label class="confirm-check"><input id="merge-confirmed" type="checkbox"><span>Ich bestätige die Zuordnung und möchte die angezeigten Quellstunden ins Ziel kopieren.</span></label>
@@ -986,6 +1052,7 @@ class StatFusionPanel extends HTMLElement {
         .timeline { background:var(--secondary-background-color, var(--sf-surface-alt)); border:1px solid var(--divider-color, var(--sf-divider)); border-radius:9px; margin-top:20px; padding:16px; }.timeline-heading { display:flex; flex-direction:column; gap:4px; }.timeline-heading strong { font-size:17px; }.timeline-track { align-items:center; display:grid; grid-template-columns:minmax(0, 1fr) 54px minmax(0, 1fr); margin-top:16px; }.timeline-segment { background:#0878d1; border-radius:6px; color:#fff; font-size:13px; font-weight:700; padding:10px 12px; text-align:center; }.timeline-segment.target { background:var(--accent-color, var(--sf-accent)); }.timeline-connector { background:var(--primary-color, var(--sf-primary)); height:4px; }.timeline.gap .timeline-connector { background:var(--warning-color, #f6a700); }.timeline.overlap .timeline-connector,.timeline.reversed .timeline-connector { background:var(--error-color, var(--sf-error)); }.timeline-details { display:grid; gap:12px; grid-template-columns:1fr 1.25fr 1fr; margin-top:13px; }.timeline-details div { display:grid; gap:3px; }.timeline-details div:last-child { text-align:right; }.timeline-details span { color:var(--secondary-text-color, var(--sf-secondary-text)); font-size:12px; }.timeline-details strong { font-size:13px; }.timeline-relation { text-align:center; }.timeline-relation strong { font-family:var(--primary-font-family, "Roboto", "Noto Sans", Arial, sans-serif); }
         .findings { display:grid; gap:8px; list-style:none; margin:20px 0 0; padding:0; }.finding { align-items:flex-start; background:var(--secondary-background-color, var(--sf-surface-alt)); border-radius:8px; display:flex; gap:10px; padding:11px; }.finding span { align-items:center; background:var(--primary-color, var(--sf-primary)); border-radius:50%; color:white; display:inline-flex; flex:0 0 19px; font-size:12px; font-weight:700; height:19px; justify-content:center; }.finding.error span { background:var(--error-color, var(--sf-error)); }.finding.warning span { background:var(--warning-color, #f6a700); }
         .review-plan { background:var(--secondary-background-color, var(--sf-surface-alt)); border-left:3px solid #0878d1; border-radius:8px; padding:0 14px; }.review-plan.blocked-plan { border-left-color:var(--error-color, var(--sf-error)); padding:14px; }.review-plan h2 { font-size:18px; margin-top:4px; }.review-plan p { color:var(--secondary-text-color, var(--sf-secondary-text)); margin-top:0; }.review-plan ol { display:grid; gap:7px; margin:0; padding:11px 0 14px 21px; }.review-plan li { padding-left:3px; }.review-plan > p { border-top:1px solid var(--divider-color, var(--sf-divider)); padding-top:11px; }
+        .collision-resolution { background:var(--secondary-background-color, var(--sf-surface-alt)); border:2px solid var(--divider-color, var(--sf-divider)); border-left:4px solid var(--warning-color, #f6a700); border-radius:9px; margin:12px 0; padding:14px; }.collision-resolution h2 { font-size:17px; margin:5px 0; }.collision-resolution > p { color:var(--secondary-text-color, var(--sf-secondary-text)); line-height:1.4; margin:8px 0; }.collision-resolution label { align-items:flex-start; display:flex; gap:9px; margin:11px 0; }.collision-resolution label.disabled { opacity:.6; }.collision-resolution input { accent-color:#0878d1; flex:0 0 auto; margin:3px 0 0; }.collision-resolution .collision-warning { color:var(--error-color, var(--sf-error)); font-size:13px; }
         .merge-confirmation,.merge-result { background:var(--secondary-background-color, var(--sf-surface-alt)); border:1px solid var(--divider-color, var(--sf-divider)); border-left:3px solid #0878d1; border-radius:9px; padding:14px; }.merge-confirmation h2 { font-size:18px; margin-top:4px; }.merge-confirmation > p,.merge-result p { color:var(--secondary-text-color, var(--sf-secondary-text)); line-height:1.4; margin-top:8px; }.confirm-check { align-items:flex-start; color:var(--primary-text-color, var(--sf-text)); display:flex; font-size:13px; font-weight:500; gap:9px; margin-top:12px; }.confirm-check input { accent-color:#0878d1; flex:0 0 auto; margin:2px 0 0; width:auto; }.merge-confirmation button { background:#0878d1; border:0; border-radius:8px; color:white; cursor:pointer; font:inherit; font-weight:700; margin-top:14px; padding:10px 14px; }.merge-confirmation button:disabled { cursor:wait; opacity:.65; }.merge-result.success { border-left-color:var(--success-color, #2e7d32); }.merge-result strong { color:var(--success-color, #2e7d32); }.merge-error { color:var(--error-color, var(--sf-error)); }
         .safety-notice { background:color-mix(in srgb, var(--error-color, #c62828) 9%, var(--card-background-color, var(--sf-surface))); border:1px solid color-mix(in srgb, var(--error-color, #c62828) 38%, var(--divider-color, var(--sf-divider))); border-left:4px solid var(--error-color, #c62828); border-radius:9px; margin-bottom:14px; padding:13px 15px; }.safety-notice strong { color:var(--error-color, #c62828); display:block; }.safety-notice p { line-height:1.4; margin-top:5px; }.safety-notice p:last-child { font-weight:600; }
         dialog.picker { background-color:var(--card-background-color, var(--sf-surface)); border:2px solid var(--divider-color, var(--sf-divider)); border-radius:12px; box-shadow:0 20px 60px rgb(0 0 0 / 55%); box-sizing:border-box; color:var(--primary-text-color, var(--sf-text)); inset:0; margin:auto; max-height:calc(100dvh - 40px); max-width:660px; overflow:hidden; padding:22px; position:fixed; width:calc(100% - 40px); }
@@ -1084,12 +1151,41 @@ class StatFusionPanel extends HTMLElement {
     const warningsCheck = this.shadowRoot.querySelector("#warnings-confirmed");
     const mergeCheck = this.shadowRoot.querySelector("#merge-confirmed");
     if (mergeButton && backupCheck && warningsCheck && mergeCheck) {
+      const resolutionInputs = [...this.shadowRoot.querySelectorAll('input[name="collision-resolution"]')];
+      const overlap = this._result && this._result.overlap;
       const syncMergeButton = () => {
-        mergeButton.disabled = this._mergeLoading || !backupCheck.checked || !warningsCheck.checked || !mergeCheck.checked;
+        const resolutionRequired = overlap && overlap.count > 0;
+        const resolutionValid = !resolutionRequired
+          || ["source", "target", "cancel"].includes(this._collisionResolution);
+        const sourceSafe = this._collisionResolution !== "source" || overlap.source_overwrite_safe;
+        const cancelSelected = this._collisionResolution === "cancel";
+        mergeButton.disabled = this._mergeLoading
+          || (!cancelSelected && (!backupCheck.checked
+            || !warningsCheck.checked
+            || !mergeCheck.checked
+            || !resolutionValid
+            || !sourceSafe));
+        mergeButton.textContent = this._collisionResolution === "cancel"
+          ? this._localize("Übernahme abbrechen")
+          : this._mergeLoading ? this._localize("Recorder übernimmt …") : this._localize("Stundenwerte übernehmen");
       };
       backupCheck.addEventListener("change", syncMergeButton);
       warningsCheck.addEventListener("change", syncMergeButton);
       mergeCheck.addEventListener("change", syncMergeButton);
+      resolutionInputs.forEach((input) => input.addEventListener("change", (event) => {
+        this._collisionResolution = event.target.value;
+        this._mergeError = "";
+        const policy = this.shadowRoot.querySelector("#collision-policy");
+        if (policy) {
+          const message = this._collisionResolution === "source"
+            ? "Quelle gewinnt für überschneidende Stunden"
+            : this._collisionResolution === "target"
+              ? "Ziel gewinnt für überschneidende Stunden"
+              : "Übernahme abgebrochen; es wurden keine Daten geändert.";
+          policy.textContent = this._localize(message);
+        }
+        syncMergeButton();
+      }));
       syncMergeButton();
     }
     this.shadowRoot.querySelectorAll(".reuse-analysis").forEach((button) => {

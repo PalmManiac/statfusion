@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.0 – Unreleased
+
+- Resolve identical hourly timestamps during same-installation merges by
+  keeping the old source value, keeping the new target value, or cancelling.
+- Show the exact collision count and time range, recheck the collision set before
+  writing, and verify the selected result through Recorder.
+- Preserve all non-conflicting target hours and the source statistic; continue
+  to block source replacement when Recorder cannot safely update mean weights.
+
 ## 1.1.1 – 2026-10-03
 
 - Apply the active Home Assistant theme colors and font to the embedded panel.
