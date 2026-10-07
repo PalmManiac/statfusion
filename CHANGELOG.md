@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.2 – 2026-10-07
+
+- Explain when overlapping date ranges contain no identical hourly timestamps,
+  and show a clear warning if the analysis did not return collision details.
+- Keep detected conflict choices visible when compatibility blockers prevent
+  merging, while disabling the choices until those blockers are resolved.
+
 ## 1.2.1 – 2026-10-07
 
 - Make the overlapping-hour choices clearly visible and usable in the analysis
