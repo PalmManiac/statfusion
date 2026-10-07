@@ -118,6 +118,11 @@ const EN_TRANSLATIONS = {
   "Die Übernahme kopiert alle fehlenden Quellstunden unverändert ins Ziel.": "The merge copies all missing source hours unchanged into the target.",
   "Bei gleichen Stunden gewinnt die ausgewählte Statistik. Alle anderen Zielstunden bleiben erhalten.": "For shared hours, the selected statistic wins. All other target hours are preserved.",
   "Überschneidende Stunden": "Overlapping hours",
+  "Zeiträume überschneiden sich": "The time ranges overlap",
+  "Der Recorder hat keine identischen Stundenstarts gefunden. Deshalb gibt es keine Konflikt-Auswahl.": "The Recorder found no identical hourly timestamps, so there is no conflict choice to show.",
+  "Konflikte konnten nicht geprüft werden": "Overlapping hours could not be checked",
+  "Die Analyse enthält keine Konfliktdaten. Führe die Kompatibilitätsprüfung erneut aus.": "The analysis did not include conflict details. Run the compatibility check again.",
+  "Konflikt-Auswahl gesperrt: Zuerst die blockierenden Kompatibilitätshinweise klären.": "Conflict choices are disabled until the blocking compatibility findings are resolved.",
   "Es gibt keine identischen Stundenwerte; alle Quellstunden werden ergänzt.": "There are no identical hourly values; all source hours will be added.",
   "Es gibt keine identischen Stundenwerte. Alle Quellstunden werden ergänzt.": "There are no identical hourly values. All source hours will be added.",
   "Stundenwerte in Ziel behalten": "Keep target values for shared hours",
@@ -952,18 +957,38 @@ class StatFusionPanel extends HTMLElement {
 
   _collisionTemplate(blocked) {
     const overlap = this._result && this._result.overlap;
-    if (blocked || !overlap || !overlap.count || this._mergeResult) return "";
+    const rangesOverlap = (this._result.findings || []).some(
+      (finding) => finding.code === "time_range_overlap",
+    );
+    if (!rangesOverlap || this._mergeResult) return "";
+    if (!overlap) {
+      return `
+        <section class="collision-resolution" role="alert">
+          <span class="eyebrow">${this._localize("Überschneidende Stunden")}</span>
+          <h2>${this._localize("Konflikte konnten nicht geprüft werden")}</h2>
+          <p>${this._localize("Die Analyse enthält keine Konfliktdaten. Führe die Kompatibilitätsprüfung erneut aus.")}</p>
+        </section>`;
+    }
+    if (!overlap.count) {
+      return `
+        <section class="collision-resolution" role="status">
+          <span class="eyebrow">${this._localize("Überschneidende Stunden")}</span>
+          <h2>${this._localize("Zeiträume überschneiden sich")}</h2>
+          <p>${this._localize("Der Recorder hat keine identischen Stundenstarts gefunden. Deshalb gibt es keine Konflikt-Auswahl.")}</p>
+        </section>`;
+    }
     const sourceDisabled = !overlap.source_overwrite_safe;
     return `
       <section class="collision-resolution">
         <span class="eyebrow">${this._localize("Überschneidende Stunden")}</span>
         <h2>${this._localize("Gleiche Stunden: ")}${overlap.count}</h2>
         <p>${escapeHtml(this._formatDate(overlap.first))} – ${escapeHtml(this._formatDate(overlap.last))}</p>
+        ${blocked ? `<p class="collision-warning">${this._localize("Konflikt-Auswahl gesperrt: Zuerst die blockierenden Kompatibilitätshinweise klären.")}</p>` : ""}
         <p>${this._localize("Wähle Quelle oder Ziel für die überschneidenden Stunden. Abbrechen führt keine Übernahme aus.")}</p>
-        <label><input type="radio" name="collision-resolution" value="target" ${this._collisionResolution === "target" ? "checked" : ""}><span>${this._localize("Stundenwerte in Ziel behalten")}</span></label>
-        <label class="${sourceDisabled ? "disabled" : ""}"><input type="radio" name="collision-resolution" value="source" ${this._collisionResolution === "source" ? "checked" : ""} ${sourceDisabled ? "disabled" : ""}><span>${this._localize("Stundenwerte aus Quelle übernehmen")}</span></label>
+        <label class="${blocked ? "disabled" : ""}"><input type="radio" name="collision-resolution" value="target" ${this._collisionResolution === "target" ? "checked" : ""} ${blocked ? "disabled" : ""}><span>${this._localize("Stundenwerte in Ziel behalten")}</span></label>
+        <label class="${sourceDisabled || blocked ? "disabled" : ""}"><input type="radio" name="collision-resolution" value="source" ${this._collisionResolution === "source" ? "checked" : ""} ${sourceDisabled || blocked ? "disabled" : ""}><span>${this._localize("Stundenwerte aus Quelle übernehmen")}</span></label>
         ${sourceDisabled ? `<p class="collision-warning">${this._localize("Quelle kann diese Stunden nicht sicher ersetzen, weil Home Assistant deren Mittelwertgewicht nicht aktualisieren kann.")}</p>` : ""}
-        <label><input type="radio" name="collision-resolution" value="cancel" ${this._collisionResolution === "cancel" ? "checked" : ""}><span>${this._localize("Abbrechen – keine Daten ändern")}</span></label>
+        <label class="${blocked ? "disabled" : ""}"><input type="radio" name="collision-resolution" value="cancel" ${this._collisionResolution === "cancel" ? "checked" : ""} ${blocked ? "disabled" : ""}><span>${this._localize("Abbrechen – keine Daten ändern")}</span></label>
         <p id="collision-policy" aria-live="polite">${this._localize(this._collisionResolution === "source" ? "Quelle gewinnt für überschneidende Stunden" : this._collisionResolution === "target" ? "Ziel gewinnt für überschneidende Stunden" : "Wähle Quelle oder Ziel für die überschneidenden Stunden. Abbrechen führt keine Übernahme aus.")}</p>
       </section>`;
   }
@@ -1153,8 +1178,11 @@ class StatFusionPanel extends HTMLElement {
     if (mergeButton && backupCheck && warningsCheck && mergeCheck) {
       const resolutionInputs = [...this.shadowRoot.querySelectorAll('input[name="collision-resolution"]')];
       const overlap = this._result && this._result.overlap;
+      const rangesOverlap = (this._result.findings || []).some(
+        (finding) => finding.code === "time_range_overlap",
+      );
       const syncMergeButton = () => {
-        const resolutionRequired = overlap && overlap.count > 0;
+        const resolutionRequired = (rangesOverlap && !overlap) || (overlap && overlap.count > 0);
         const resolutionValid = !resolutionRequired
           || ["source", "target", "cancel"].includes(this._collisionResolution);
         const sourceSafe = this._collisionResolution !== "source" || overlap.source_overwrite_safe;
