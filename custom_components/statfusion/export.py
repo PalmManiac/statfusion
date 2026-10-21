@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import json
-
 from aiohttp import web
 from homeassistant.components.http import KEY_HASS, HomeAssistantView, require_admin
 from homeassistant.core import HomeAssistant, callback, valid_entity_id
 
 from .const import DOMAIN
+from .executor_work import build_transfer_body
 from .merge_plan import MergePlanError, inspect_collisions
 from .recorder_reader import (
     async_import_hourly_statistics,
@@ -17,7 +16,6 @@ from .recorder_reader import (
 from .transfer_format import (
     MAX_TRANSFER_BYTES,
     TransferFormatError,
-    build_transfer_package,
     parse_transfer_package,
 )
 from .transfer_import import (
@@ -66,10 +64,9 @@ class StatisticsExportView(HomeAssistantView):
             )
 
         try:
-            package = build_transfer_package(statistic_id, metadata, rows)
-            body = json.dumps(
-                package, ensure_ascii=False, separators=(",", ":"), allow_nan=False
-            ).encode("utf-8")
+            body = await hass.async_add_executor_job(
+                build_transfer_body, statistic_id, metadata, rows
+            )
         except (TransferFormatError, TypeError, ValueError) as err:
             return self.json_message(str(err), status_code=400)
 
@@ -265,8 +262,8 @@ class StatisticsImportView(HomeAssistantView):
         verified = await hass.async_add_executor_job(
             verify_transfer_data, rows, verified_rows
         )
-        preserved_target_rows = rows_at_starts(
-            target_rows, plan.collision_summary.starts
+        preserved_target_rows = await hass.async_add_executor_job(
+            rows_at_starts, target_rows, plan.collision_summary.starts
         )
         preserved = collision_resolution != "target"
         if not preserved:
