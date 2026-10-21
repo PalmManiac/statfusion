@@ -4,7 +4,7 @@
 [![Active installs](https://badge.t-haber.de/badge/statfusion?kill_cache=1)](https://github.com/PalmManiac/statfusion/)
 ![GitHub Stars](https://img.shields.io/github/stars/PalmManiac/statfusion?style=for-the-badge)
 ![License](https://img.shields.io/github/license/PalmManiac/statfusion?style=for-the-badge)
-![HACS custom repository](https://img.shields.io/badge/HACS-Custom%20repository-blue?style=for-the-badge)
+[![HACS Default](https://img.shields.io/badge/HACS-Default-orange.svg?style=for-the-badge)](https://github.com/custom-components/hacs)
 
 # StatFusion
 
@@ -34,19 +34,13 @@ risk.
 
 ## Installation
 
-StatFusion can currently be added to HACS as a custom integration repository:
+StatFusion is available in the default HACS catalog:
 
-1. In HACS, open **Integrations** and choose **Custom repositories** from the
-   menu.
-2. Add `https://github.com/PalmManiac/statfusion` and select **Integration**.
-3. Install StatFusion from HACS, then restart Home Assistant.
+1. In Home Assistant, open **HACS** and search for **StatFusion**.
+2. Open StatFusion and select **Download**.
+3. Restart Home Assistant to load the integration.
 4. Add **StatFusion** from **Settings → Devices & services**. Its dashboard
    appears in the sidebar for administrators.
-
-Until it is included in HACS's default list, users need to add the repository
-manually. The repository also supports manual installation by copying
-`custom_components/statfusion` into Home Assistant's `custom_components`
-directory and restarting.
 
 ## Development
 
