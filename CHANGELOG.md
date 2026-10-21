@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.4 – 2026-10-21
+
+- Move large export serialization, hourly collision analysis, merge planning,
+  import-row preparation, and post-merge verification into Home Assistant's
+  executor so these operations do not block the event loop.
+
 ## 1.2.3 – 2026-10-07
 
 - Resolve overlapping hours during cross-installation imports by keeping the
